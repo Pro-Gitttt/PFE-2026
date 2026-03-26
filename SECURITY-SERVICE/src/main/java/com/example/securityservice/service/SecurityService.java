@@ -1,17 +1,17 @@
+// ---------- SecurityService.java (interface) ----------
 package com.example.securityservice.service;
 
-import com.example.securityservice.entities.*;
+import com.example.securityservice.dto.ScanDetailResponse;
+import com.example.securityservice.dto.SecurityScanRequest;
+import com.example.securityservice.dto.SecurityScanResponse;
 
 import java.util.List;
 
 public interface SecurityService {
 
-    SecurityScan performScan(Long pipelineExecutionId, ScanType type);
+    SecurityScanResponse scan(SecurityScanRequest request);
 
-    List<SecurityScan> getScansByExecution(Long executionId);
+    ScanDetailResponse getScanByExecution(Long executionId);
 
-    List<Vulnerability> getVulnerabilities(Long scanId);
-
-    Double calculateSecurityScore(Long scanId);
-
+    List<ScanDetailResponse> getScansByProject(Long projectId);
 }

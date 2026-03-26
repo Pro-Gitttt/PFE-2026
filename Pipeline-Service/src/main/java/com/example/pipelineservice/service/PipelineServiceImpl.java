@@ -1,120 +1,105 @@
 package com.example.pipelineservice.service;
 
-import com.example.pipelineservice.client.SecurityClient;
-import com.example.pipelineservice.client.dto.SecurityScanResponse;
-import com.example.pipelineservice.entities.*;
-import com.example.pipelineservice.repository.*;
+import com.example.pipelineservice.MAPPER.PipelineMapper;
+import com.example.pipelineservice.client.dto.request.CreatePipelineRequest;
+import com.example.pipelineservice.client.dto.response.PipelineResponse;
+import com.example.pipelineservice.entities.Pipeline;
+import com.example.pipelineservice.entities.Project;
+import com.example.pipelineservice.repository.PipelineRepository;
+import com.example.pipelineservice.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class PipelineServiceImpl implements PipelineService {
 
     private final PipelineRepository pipelineRepository;
-    private final PipelineExecutionRepository executionRepository;
-    private final StageRepository stageRepository;
-    private final JobRepository jobRepository;
-    private final SecurityClient securityClient;
+    private final ProjectRepository projectRepository;
+    private final PipelineMapper pipelineMapper;
 
-    // ================= PIPELINE =================
+    // ================================
+    // CREATE PIPELINE
+    // ================================
 
     @Override
-    public Pipeline createPipeline(Pipeline pipeline) {
-        pipeline.setStatus(PipelineStatus.CREATED);
+    public PipelineResponse createPipeline(Long projectId, CreatePipelineRequest request) {
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        Pipeline pipeline = pipelineMapper.toEntity(request, project);
+
+        pipeline.setStatus(null);
         pipeline.setCreatedAt(LocalDateTime.now());
-        return pipelineRepository.save(pipeline);
+
+        Pipeline savedPipeline = pipelineRepository.save(pipeline);
+
+        return pipelineMapper.toResponse(savedPipeline);
     }
 
-    @Override
-    public List<Pipeline> getAllPipelines() {
-        return pipelineRepository.findAll();
-    }
+    // ================================
+    // GET PIPELINES BY PROJECT
+    // ================================
 
     @Override
-    public Pipeline getPipelineById(Long id) {
-        return pipelineRepository.findById(id)
+    public List<PipelineResponse> getPipelinesByProject(Long projectId) {
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        return pipelineRepository.findByProject(project)
+                .stream()
+                .map(pipelineMapper::toResponse)
+                .toList();
+    }
+
+    // ================================
+    // GET PIPELINE BY ID
+    // ================================
+
+    @Override
+    public PipelineResponse getPipelineById(Long pipelineId) {
+
+        Pipeline pipeline = pipelineRepository.findById(pipelineId)
                 .orElseThrow(() -> new RuntimeException("Pipeline not found"));
+
+        return pipelineMapper.toResponse(pipeline);
     }
 
+    // ================================
+    // UPDATE PIPELINE
+    // ================================
+
     @Override
-    public void deletePipeline(Long id) {
-        pipelineRepository.deleteById(id);
+    public PipelineResponse updatePipeline(Long pipelineId, CreatePipelineRequest request) {
+
+        Pipeline pipeline = pipelineRepository.findById(pipelineId)
+                .orElseThrow(() -> new RuntimeException("Pipeline not found"));
+
+        pipeline.setName(request.getName());
+
+        Pipeline updatedPipeline = pipelineRepository.save(pipeline);
+
+        return pipelineMapper.toResponse(updatedPipeline);
     }
 
-    // ================= EXECUTION =================
+    // ================================
+    // DELETE PIPELINE
+    // ================================
 
     @Override
-    public PipelineExecution triggerExecution(Long pipelineId,
-                                              Long userId,
-                                              String commitHash) {
+    public void deletePipeline(Long pipelineId) {
 
-        Pipeline pipeline = getPipelineById(pipelineId);
-
-        pipeline.setStatus(PipelineStatus.RUNNING);
-        pipelineRepository.save(pipeline);
-
-        // 🔹 Use RELATION not pipelineId
-        PipelineExecution execution = new PipelineExecution();
-        execution.setPipeline(pipeline);
-        execution.setTriggeredBy(userId);
-        execution.setCommitHash(commitHash);
-        execution.setStartTime(LocalDateTime.now());
-        execution.setStatus(PipelineStatus.RUNNING);
-
-        execution = executionRepository.save(execution);
-
-        // 🔥 CALL SECURITY SERVICE
-        SecurityScanResponse scan =
-                securityClient.performScan(execution.getId(), "SAST");
-
-        // 🔐 POLICY ENFORCEMENT
-        if (Boolean.TRUE.equals(scan.getBlocked())) {
-            execution.setStatus(PipelineStatus.FAILED);
-            pipeline.setStatus(PipelineStatus.FAILED);
-        } else {
-            execution.setStatus(PipelineStatus.SUCCESS);
-            pipeline.setStatus(PipelineStatus.SUCCESS);
+        if (!pipelineRepository.existsById(pipelineId)) {
+            throw new RuntimeException("Pipeline not found");
         }
 
-        pipelineRepository.save(pipeline);
-
-        return executionRepository.save(execution);
-    }
-
-    @Override
-    public List<PipelineExecution> getExecutionsByPipeline(Long pipelineId) {
-
-        Pipeline pipeline = getPipelineById(pipelineId);
-
-        return executionRepository.findByPipeline(pipeline);
-    }
-
-    // ================= STAGE =================
-
-    @Override
-    public Stage addStage(Long pipelineId, Stage stage) {
-
-        Pipeline pipeline = getPipelineById(pipelineId);
-
-        stage.setPipeline(pipeline);   // 🔹 RELATION
-        return stageRepository.save(stage);
-    }
-
-    // ================= JOB =================
-
-    @Override
-    public Job addJob(Long stageId, Job job) {
-
-        Stage stage = stageRepository.findById(stageId)
-                .orElseThrow(() -> new RuntimeException("Stage not found"));
-
-        job.setStage(stage);   // 🔹 RELATION
-        job.setStatus(PipelineStatus.CREATED);
-
-        return jobRepository.save(job);
+        pipelineRepository.deleteById(pipelineId);
     }
 }

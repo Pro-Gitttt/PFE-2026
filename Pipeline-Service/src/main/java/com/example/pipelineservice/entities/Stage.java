@@ -1,5 +1,8 @@
 package com.example.pipelineservice.entities;
 
+import com.example.pipelineservice.entities.Job;
+import com.example.pipelineservice.entities.Pipeline;
+import com.example.pipelineservice.entities.StageType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -12,6 +15,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Data
 public class Stage {
 
     @Id
@@ -20,12 +24,15 @@ public class Stage {
 
     private String name;
 
-    // 🔗 Many stages → one pipeline
+    private int orderIndex;
+
+    @Enumerated(EnumType.STRING)
+    private StageType type;
+
     @ManyToOne
     @JoinColumn(name = "pipeline_id", nullable = false)
     private Pipeline pipeline;
 
-    // 🔁 One stage → many jobs
     @OneToMany(mappedBy = "stage", cascade = CascadeType.ALL)
     private List<Job> jobs;
 }

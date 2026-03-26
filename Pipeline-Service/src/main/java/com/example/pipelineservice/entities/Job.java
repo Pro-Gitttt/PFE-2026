@@ -1,5 +1,6 @@
 package com.example.pipelineservice.entities;
 
+import com.example.pipelineservice.entities.Stage;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Data
 public class Job {
 
     @Id
@@ -20,12 +22,10 @@ public class Job {
 
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    private PipelineStatus status;
+    private int orderIndex;
 
     private LocalDateTime createdAt;
 
-    // ✅ RELATION ONLY (NO stageId field)
     @ManyToOne
     @JoinColumn(name = "stage_id", nullable = false)
     private Stage stage;

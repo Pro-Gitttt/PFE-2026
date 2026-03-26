@@ -1,24 +1,19 @@
 package com.example.pipelineservice.service;
 
-import com.example.pipelineservice.entities.*;
+import com.example.pipelineservice.client.dto.request.CreatePipelineRequest;
+import com.example.pipelineservice.client.dto.response.PipelineResponse;
 
 import java.util.List;
 
 public interface PipelineService {
 
-    Pipeline createPipeline(Pipeline pipeline);
+    PipelineResponse createPipeline(Long projectId, CreatePipelineRequest request);
 
-    List<Pipeline> getAllPipelines();
+    List<PipelineResponse> getPipelinesByProject(Long projectId);
 
-    Pipeline getPipelineById(Long id);
+    PipelineResponse getPipelineById(Long pipelineId);
 
-    void deletePipeline(Long id);
+    PipelineResponse updatePipeline(Long pipelineId, CreatePipelineRequest request);
 
-    PipelineExecution triggerExecution(Long pipelineId, Long userId, String commitHash);
-
-    List<PipelineExecution> getExecutionsByPipeline(Long pipelineId);
-
-    Stage addStage(Long pipelineId, Stage stage);
-
-    Job addJob(Long stageId, Job job);
+    void deletePipeline(Long pipelineId);
 }

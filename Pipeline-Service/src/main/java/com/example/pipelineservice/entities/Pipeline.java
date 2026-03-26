@@ -19,7 +19,6 @@ public class Pipeline {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long projectId;
 
     private String name;
 
@@ -35,4 +34,8 @@ public class Pipeline {
     // 🔁 One pipeline → many executions
     @OneToMany(mappedBy = "pipeline", cascade = CascadeType.ALL)
     private List<PipelineExecution> executions;
+
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    private Project project;
 }

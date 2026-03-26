@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface PipelineExecutionRepository extends JpaRepository<PipelineExecution, Long> {
 
-    List<PipelineExecution> findByPipelineId(Long pipelineId);
+
 
     List<PipelineExecution> findByPipeline(Pipeline pipeline);
 }
