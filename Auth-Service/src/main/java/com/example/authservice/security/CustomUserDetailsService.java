@@ -1,3 +1,4 @@
+// ---------- CustomUserDetailsService.java ----------
 package com.example.authservice.security;
 
 import com.example.authservice.repositories.UserRepository;
@@ -14,11 +15,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String username)
-            throws UsernameNotFoundException {
-
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByUsername(username)
-                .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found"));
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        "User not found: " + username));
     }
 }
+ 

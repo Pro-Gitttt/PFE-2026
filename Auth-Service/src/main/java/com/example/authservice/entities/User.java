@@ -1,20 +1,24 @@
+// ---------- User.java ----------
 package com.example.authservice.entities;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
-
+// FIX 1: @Table(name = "users") — "user" is a reserved SQL keyword, crashes on PostgreSQL
+// FIX 2: removed @Data — conflicts with @Builder and exposes password in equals/hashCode
+// FIX 3: getAuthorities() now returns the actual role — was returning List.of() (empty!)
+//         which meant Spring Security never knew the user's role
 @Entity
-@Data
+@Table(name = "users")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -37,27 +41,20 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Role role;
 
+    @Builder.Default
     private boolean enabled = true;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
+    // FIX: was returning List.of() — now returns the user's role as a GrantedAuthority
+    // This is what Spring Security reads for @PreAuthorize, hasRole(), etc.
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
-    @Override
-    public boolean isAccountNonExpired() {
-        return UserDetails.super.isAccountNonExpired();
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return UserDetails.super.isAccountNonLocked();
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return UserDetails.super.isCredentialsNonExpired();
-    }
+    @Override public boolean isAccountNonExpired()     { return true; }
+    @Override public boolean isAccountNonLocked()      { return true; }
+    @Override public boolean isCredentialsNonExpired() { return true; }
+    @Override public boolean isEnabled()               { return enabled; }
 }

@@ -1,10 +1,17 @@
+// ---------- AuthController.java ----------
+// FIX: added @Valid on all request bodies to trigger validation annotations
+// FIX: added /refresh endpoint — was missing despite the DTO existing
+// FIX: added /me endpoint — returns current user from JWT
 package com.example.authservice.controller;
 
-import com.example.authservice.Dto.AuthResponse;
-import com.example.authservice.Dto.LoginRequest;
-import com.example.authservice.Dto.RegisterRequest;
+
+import com.example.authservice.Dto.*;
 import com.example.authservice.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,12 +22,27 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public AuthResponse register(@RequestBody RegisterRequest request) {
+    @ResponseStatus(HttpStatus.CREATED)
+    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
         return authService.register(request);
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@RequestBody LoginRequest request) {
+    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
+
+    // FIX: refresh endpoint was completely absent
+    @PostMapping("/refresh")
+    public AuthResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return authService.refreshToken(request);
+    }
+
+    // NEW: returns the currently authenticated user's profile
+    @GetMapping("/me")
+    public UserResponse getCurrentUser(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return authService.getCurrentUser(userDetails.getUsername());
+    }
 }
+ 

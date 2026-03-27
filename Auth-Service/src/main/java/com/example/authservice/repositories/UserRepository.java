@@ -1,5 +1,5 @@
+// ---------- UserRepository.java ----------
 package com.example.authservice.repositories;
-
 
 import com.example.authservice.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,3 +16,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 }
+ 
