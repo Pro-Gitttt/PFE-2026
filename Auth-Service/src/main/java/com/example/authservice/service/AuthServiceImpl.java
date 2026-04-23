@@ -1,15 +1,13 @@
-// ---------- AuthServiceImpl.java ----------
 package com.example.authservice.service;
 
 import com.example.authservice.Dto.*;
-
-
 import com.example.authservice.entities.User;
-
 import com.example.authservice.exception.ResourceNotFoundException;
 import com.example.authservice.repositories.UserRepository;
 import com.example.authservice.security.JwtService;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,19 +23,15 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService      jwtService;
 
-    // -------------------------------------------------------
-    // REGISTER
-    // -------------------------------------------------------
-
+    // ================= REGISTER =================
     @Override
     public AuthResponse register(RegisterRequest request) {
 
-        // FIX: duplicate checks — original had none, causing raw DB constraint violations
         if (userRepository.existsByUsername(request.getUsername()))
-            throw new RuntimeException("Username already taken: " + request.getUsername());
+            throw new RuntimeException("Username already taken");
 
         if (userRepository.existsByEmail(request.getEmail()))
-            throw new RuntimeException("Email already registered: " + request.getEmail());
+            throw new RuntimeException("Email already registered");
 
         User user = User.builder()
                 .username(request.getUsername())
@@ -45,25 +39,15 @@ public class AuthServiceImpl implements AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
                 .enabled(true)
-                // FIX: set createdAt explicitly (not inline on field — JPA timing issue)
                 .createdAt(LocalDateTime.now())
                 .build();
 
         userRepository.save(user);
 
-        // FIX: return both tokens + role, not just a single token
-        return AuthResponse.builder()
-                .accessToken(jwtService.generateToken(user))
-                .refreshToken(jwtService.generateRefreshToken(user))
-                .username(user.getUsername())
-                .role(user.getRole())
-                .build();
+        return buildAuthResponse(user);
     }
 
-    // -------------------------------------------------------
-    // LOGIN
-    // -------------------------------------------------------
-
+    // ================= LOGIN =================
     @Override
     public AuthResponse login(LoginRequest request) {
 
@@ -73,50 +57,33 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword()))
             throw new RuntimeException("Invalid credentials");
 
-        return AuthResponse.builder()
-                .accessToken(jwtService.generateToken(user))
-                .refreshToken(jwtService.generateRefreshToken(user))
-                .username(user.getUsername())
-                .role(user.getRole())
-                .build();
+        return buildAuthResponse(user);
     }
 
-    // -------------------------------------------------------
-    // REFRESH TOKEN
-    // FIX: was completely missing — DTO existed but no logic
-    // -------------------------------------------------------
-
+    // ================= REFRESH TOKEN =================
     @Override
     public AuthResponse refreshToken(RefreshTokenRequest request) {
 
         String refreshToken = request.getRefreshToken();
 
-        // Validate it is actually a refresh token (not an access token reused)
+        // ✅ CHECK TYPE FIRST
         String type = jwtService.extractType(refreshToken);
         if (!"refresh".equals(type))
-            throw new RuntimeException("Invalid token type — must be a refresh token");
+            throw new RuntimeException("Invalid token type");
 
         String username = jwtService.extractUsername(refreshToken);
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Validate signature + expiry
-        if (!jwtService.isTokenValid(refreshToken, user))
-            throw new RuntimeException("Refresh token expired or invalid");
+        // ✅ IMPORTANT: do NOT use isTokenValid() (it enforces access type)
+        if (jwtService.isTokenExpired(refreshToken))
+            throw new RuntimeException("Refresh token expired");
 
-        return AuthResponse.builder()
-                .accessToken(jwtService.generateToken(user))
-                .refreshToken(jwtService.generateRefreshToken(user))
-                .username(user.getUsername())
-                .role(user.getRole())
-                .build();
+        return buildAuthResponse(user);
     }
 
-    // -------------------------------------------------------
-    // GET CURRENT USER — for /me endpoint
-    // -------------------------------------------------------
-
+    // ================= GET CURRENT USER =================
     @Override
     public UserResponse getCurrentUser(String username) {
 
@@ -131,6 +98,14 @@ public class AuthServiceImpl implements AuthService {
                 .createdAt(user.getCreatedAt())
                 .build();
     }
+
+    // ================= HELPER =================
+    private AuthResponse buildAuthResponse(User user) {
+        return AuthResponse.builder()
+                .accessToken(jwtService.generateToken(user))
+                .refreshToken(jwtService.generateRefreshToken(user))
+                .username(user.getUsername())
+                .role(user.getRole())
+                .build();
+    }
 }
- 
- 

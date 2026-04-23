@@ -27,6 +27,8 @@ public class Pipeline {
 
     private LocalDateTime createdAt;
 
+
+
     // 🔁 One pipeline → many stages
     @OneToMany(mappedBy = "pipeline", cascade = CascadeType.ALL)
     private List<Stage> stages;

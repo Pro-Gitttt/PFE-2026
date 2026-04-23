@@ -12,13 +12,10 @@ public class PolicyService {
 
     private static final double MIN_SCORE = 70.0;
 
-    // Block if score too low OR any CRITICAL vulnerability exists
     public boolean shouldBlock(double score, List<Vulnerability> vulnerabilities) {
-
+        // FIX: enum comparison (was string comparison)
         boolean hasCritical = vulnerabilities.stream()
                 .anyMatch(v -> v.getSeverity() == SeverityLevel.CRITICAL);
-
         return score < MIN_SCORE || hasCritical;
     }
 }
- 

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+
 public class AuthController {
 
     private final AuthService authService;
@@ -43,6 +44,11 @@ public class AuthController {
     public UserResponse getCurrentUser(
             @AuthenticationPrincipal UserDetails userDetails) {
         return authService.getCurrentUser(userDetails.getUsername());
+    }
+
+    @GetMapping("/test")
+    public String test() {
+        return "AUTH OK";
     }
 }
  

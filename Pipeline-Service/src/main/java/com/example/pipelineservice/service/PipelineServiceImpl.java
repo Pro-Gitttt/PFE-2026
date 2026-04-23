@@ -8,6 +8,7 @@ import com.example.pipelineservice.entities.Project;
 import com.example.pipelineservice.repository.PipelineRepository;
 import com.example.pipelineservice.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,35 +24,49 @@ public class PipelineServiceImpl implements PipelineService {
     private final ProjectRepository projectRepository;
     private final PipelineMapper pipelineMapper;
 
-    // ================================
-    // CREATE PIPELINE
-    // ================================
+    private String getCurrentUsername() {
+        return SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getName();
+    }
 
+    private boolean isAdmin() {
+        return SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    private void checkOwnership(Project project) {
+        if (!isAdmin() && !project.getOwner().equals(getCurrentUsername())) {
+            throw new RuntimeException("Access denied");
+        }
+    }
+
+    // ================= CREATE =================
     @Override
     public PipelineResponse createPipeline(Long projectId, CreatePipelineRequest request) {
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
-        Pipeline pipeline = pipelineMapper.toEntity(request, project);
+        checkOwnership(project);
 
-        pipeline.setStatus(null);
+        Pipeline pipeline = pipelineMapper.toEntity(request, project);
         pipeline.setCreatedAt(LocalDateTime.now());
 
-        Pipeline savedPipeline = pipelineRepository.save(pipeline);
-
-        return pipelineMapper.toResponse(savedPipeline);
+        return pipelineMapper.toResponse(pipelineRepository.save(pipeline));
     }
 
-    // ================================
-    // GET PIPELINES BY PROJECT
-    // ================================
-
+    // ================= GET =================
     @Override
     public List<PipelineResponse> getPipelinesByProject(Long projectId) {
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        checkOwnership(project);
 
         return pipelineRepository.findByProject(project)
                 .stream()
@@ -59,22 +74,16 @@ public class PipelineServiceImpl implements PipelineService {
                 .toList();
     }
 
-    // ================================
-    // GET PIPELINE BY ID
-    // ================================
-
     @Override
     public PipelineResponse getPipelineById(Long pipelineId) {
 
         Pipeline pipeline = pipelineRepository.findById(pipelineId)
                 .orElseThrow(() -> new RuntimeException("Pipeline not found"));
 
+        checkOwnership(pipeline.getProject());
+
         return pipelineMapper.toResponse(pipeline);
     }
-
-    // ================================
-    // UPDATE PIPELINE
-    // ================================
 
     @Override
     public PipelineResponse updatePipeline(Long pipelineId, CreatePipelineRequest request) {
@@ -82,24 +91,21 @@ public class PipelineServiceImpl implements PipelineService {
         Pipeline pipeline = pipelineRepository.findById(pipelineId)
                 .orElseThrow(() -> new RuntimeException("Pipeline not found"));
 
+        checkOwnership(pipeline.getProject());
+
         pipeline.setName(request.getName());
 
-        Pipeline updatedPipeline = pipelineRepository.save(pipeline);
-
-        return pipelineMapper.toResponse(updatedPipeline);
+        return pipelineMapper.toResponse(pipelineRepository.save(pipeline));
     }
-
-    // ================================
-    // DELETE PIPELINE
-    // ================================
 
     @Override
     public void deletePipeline(Long pipelineId) {
 
-        if (!pipelineRepository.existsById(pipelineId)) {
-            throw new RuntimeException("Pipeline not found");
-        }
+        Pipeline pipeline = pipelineRepository.findById(pipelineId)
+                .orElseThrow(() -> new RuntimeException("Pipeline not found"));
 
-        pipelineRepository.deleteById(pipelineId);
+        checkOwnership(pipeline.getProject());
+
+        pipelineRepository.delete(pipeline);
     }
 }

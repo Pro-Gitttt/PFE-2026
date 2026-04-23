@@ -14,6 +14,8 @@ public class ProjectResponse {
     private String name;
     private String repositoryUrl;
     private String branch;
+    private String owner;
+    private String createdBy;
     private VcsType vcsType;
     private LocalDateTime createdAt;
 }

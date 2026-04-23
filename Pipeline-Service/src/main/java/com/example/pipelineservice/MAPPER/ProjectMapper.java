@@ -10,26 +10,39 @@ import java.time.LocalDateTime;
 @Component
 public class ProjectMapper {
 
-    public Project toEntity(CreateProjectRequest request) {
+    /**
+     * Convert request → entity
+     *
+     * @param request   request body
+     * @param createdBy username from JWT (NEVER trust request for this)
+     */
+    public Project toEntity(CreateProjectRequest request, String createdBy) {
 
         return Project.builder()
                 .name(request.getName())
                 .repositoryUrl(request.getRepositoryUrl())
                 .branch(request.getBranch())
-                // FIX: vcsType was never set — every project was saved with null vcsType
+                .owner(request.getOwner())              // business owner (GitHub, etc.)
                 .vcsType(request.getVcsType())
-                .createdAt(LocalDateTime.now())
+                .createdBy(createdBy)                  // 🔥 security owner (from JWT)
+                .createdAt(LocalDateTime.now())        // ✔ set here OR in service (both OK)
                 .build();
     }
 
+    /**
+     * Convert entity → response DTO
+     */
     public ProjectResponse toResponse(Project project) {
+
+        if (project == null) return null; // ✅ avoid NPE
 
         return ProjectResponse.builder()
                 .id(project.getId())
                 .name(project.getName())
                 .repositoryUrl(project.getRepositoryUrl())
                 .branch(project.getBranch())
-                // FIX: also include vcsType in response so frontend knows GitHub vs GitLab
+                .owner(project.getOwner())
+                .createdBy(project.getCreatedBy())     // 🔥 important for frontend filtering/debug
                 .vcsType(project.getVcsType())
                 .createdAt(project.getCreatedAt())
                 .build();

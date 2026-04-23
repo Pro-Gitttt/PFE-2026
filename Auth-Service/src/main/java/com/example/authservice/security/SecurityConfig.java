@@ -1,4 +1,3 @@
-// ---------- SecurityConfig.java ----------
 package com.example.authservice.security;
 
 import lombok.RequiredArgsConstructor;
@@ -21,26 +20,23 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final UserDetailsService      userDetailsService;
+    private final UserDetailsService userDetailsService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
+        return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/register",
-                                "/api/auth/login",
-                                "/api/auth/refresh").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .sessionManagement(s ->
+                        s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
+                        UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 
     @Bean
@@ -51,11 +47,10 @@ public class SecurityConfig {
         return provider;
     }
 
-    // FIX: expose AuthenticationManager as a bean — needed if you want to authenticate
-    // programmatically (e.g. in AuthServiceImpl via authManager.authenticate())
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
+            AuthenticationConfiguration config
+    ) throws Exception {
         return config.getAuthenticationManager();
     }
 
@@ -64,5 +59,3 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
- 
- 
