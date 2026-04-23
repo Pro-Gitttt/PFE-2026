@@ -1,0 +1,103 @@
+<div class="page">
+
+  <h1>Pipelines & Exécutions</h1>
+
+  <!-- PROJECT SELECT -->
+  <div class="selector-bar">
+    <label>Projet</label>
+
+    <select (change)="onProjectChange($event)">
+      <option value="">-- Choisir un projet --</option>
+      <option *ngFor="let p of projects()" [value]="p.id">
+        {{ p.name }}
+      </option>
+    </select>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="layout" *ngIf="selectedProject()">
+
+    <!-- PIPELINES -->
+    <div class="panel">
+      <h3>Pipelines</h3>
+
+      <button
+        *ngFor="let pl of pipelines()"
+        (click)="selectPipeline(pl)"
+        [class.active]="selectedPipeline()?.id === pl.id"
+        class="pipeline-item"
+      >
+        <div>
+          <b>{{ pl.name }}</b>
+          <div class="date">{{ pl.createdAt | date:'dd/MM/yyyy' }}</div>
+        </div>
+
+        <span class="status" [ngClass]="statusClass(pl.status)">
+          {{ pl.status }}
+        </span>
+      </button>
+
+      <p *ngIf="pipelines().length === 0">Aucun pipeline</p>
+    </div>
+
+    <!-- EXECUTIONS -->
+    <div class="panel" *ngIf="selectedPipeline()">
+
+      <h3>Executions - {{ selectedPipeline()?.name }}</h3>
+
+      <!-- TRIGGER -->
+      <div class="trigger">
+
+        <input
+          type="text"
+          placeholder="Commit hash"
+          [formControl]="commitCtrl"
+        />
+
+        <button
+          (click)="trigger()"
+          [disabled]="triggering() || commitCtrl.invalid"
+        >
+          {{ triggering() ? 'Running...' : 'Trigger' }}
+        </button>
+
+      </div>
+
+      <div class="error" *ngIf="triggerError()">
+        {{ triggerError() }}
+      </div>
+
+      <!-- EXECUTIONS LIST -->
+      <div *ngFor="let ex of executions()" class="execution">
+
+        <div class="row">
+          <span class="status" [ngClass]="statusClass(ex.status)">
+            {{ ex.status }}
+          </span>
+
+          <code>{{ ex.commitHash }}</code>
+
+          <span>{{ ex.startTime | date:'short' }}</span>
+
+          <span *ngIf="ex.endTime">
+            ({{ getDuration(ex.startTime, ex.endTime) }})
+          </span>
+        </div>
+
+        <div class="stages" *ngIf="ex.stages?.length">
+          <span *ngFor="let s of ex.stages">
+            {{ s.stageName }} - {{ s.status }}
+          </span>
+        </div>
+
+      </div>
+
+      <p *ngIf="executions().length === 0">
+        No executions yet
+      </p>
+
+    </div>
+
+  </div>
+
+</div>

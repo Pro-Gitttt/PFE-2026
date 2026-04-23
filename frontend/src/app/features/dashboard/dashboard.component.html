@@ -1,0 +1,90 @@
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="welcome glass fade-in">
+    <div>
+      <h1>Tableau de bord</h1>
+      <p>
+        Bienvenue, 
+        <strong class="user">{{ auth.username }}</strong>
+        <span class="role">{{ auth.role }}</span>
+      </p>
+    </div>
+    <div class="welcome-date">
+      {{ today | date:'EEEE d MMMM yyyy':'':'fr' }}
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpis" *ngIf="!loading()">
+    <div class="kpi hover-card" *ngFor="let card of [
+      {value: kpis().projects, label:'Projets', color:'blue'},
+      {value: kpis().succeeded, label:'Succès', color:'green'},
+      {value: kpis().failed, label:'Échecs', color:'red'},
+      {value: kpis().blocked, label:'Bloqués', color:'orange'}
+    ]">
+
+      <div class="kpi-left">
+        <span class="kpi-value">{{ card.value }}</span>
+        <span class="kpi-label">{{ card.label }}</span>
+      </div>
+
+      <div class="kpi-icon" [ngClass]="card.color"></div>
+    </div>
+  </div>
+
+  <!-- GRID -->
+  <div class="grid-2">
+
+    <!-- PROJECTS -->
+    <div class="card fade-in">
+      <div class="card-header">
+        <h3>Projets récents</h3>
+        <a routerLink="/projects">Voir tout →</a>
+      </div>
+
+      <table *ngIf="!loading()">
+        <tbody>
+          <tr *ngFor="let p of projects().slice(0, 6)">
+            <td>
+              <strong>{{ p.name }}</strong>
+              <div class="sub">{{ p.branch }}</div>
+            </td>
+            <td>
+              <span class="tag">{{ p.vcsType }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ALERTS -->
+    <div class="card fade-in">
+      <div class="card-header">
+        <h3>Alertes</h3>
+        <a routerLink="/notifications">Voir tout →</a>
+      </div>
+
+      <div class="alerts">
+        <div *ngFor="let n of notifications().slice(0,6)" class="alert-row">
+
+          <div class="alert-dot" [ngClass]="eventColor(n.eventType)"></div>
+
+          <div class="alert-info">
+            <span>{{ n.eventType }}</span>
+            <small>{{ n.createdAt | date:'dd/MM HH:mm' }}</small>
+          </div>
+
+          <span class="status-pill"
+                [class.ok]="n.status==='SENT'"
+                [class.fail]="n.status==='FAILED'"
+                [class.pending]="n.status==='PENDING'">
+            {{ n.status }}
+          </span>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

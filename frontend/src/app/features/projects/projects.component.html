@@ -1,0 +1,99 @@
+<div class="page">
+ 
+  <div class="page-header">
+    <div>
+      <h1>Projets</h1>
+      <p>{{ projects().length }} projet{{ projects().length !== 1 ? 's' : '' }} enregistré{{ projects().length !== 1 ? 's' : '' }}</p>
+    </div>
+    <button class="btn-primary" (click)="toggleForm()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.5">
+        <line *ngIf="!showForm()" x1="12" y1="5" x2="12" y2="19"/>
+        <line *ngIf="!showForm()" x1="5" y1="12" x2="19" y2="12"/>
+        <line *ngIf="showForm()" x1="18" y1="6" x2="6" y2="18"/>
+        <line *ngIf="showForm()" x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+      {{ showForm() ? 'Annuler' : 'Nouveau projet' }}
+    </button>
+  </div>
+ 
+  <!-- Create form -->
+  <div class="form-card" *ngIf="showForm()">
+    <h3>Nouveau projet</h3>
+    <form [formGroup]="form" (ngSubmit)="create()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label>Nom du projet *</label>
+          <input formControlName="name" placeholder="ex: devsecops-api"/>
+        </div>
+        <div class="field">
+          <label>URL du repository *</label>
+          <input formControlName="repositoryUrl" placeholder="https://github.com/user/repo"/>
+        </div>
+        <div class="field">
+          <label>Branche *</label>
+          <input formControlName="branch" placeholder="main"/>
+        </div>
+        <div class="field">
+          <label>Owner</label>
+          <input formControlName="owner" placeholder="Responsable du projet"/>
+        </div>
+        <div class="field">
+          <label>Type VCS</label>
+          <select formControlName="vcsType">
+            <option *ngFor="let v of vcsTypes" [value]="v">{{ v }}</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-error" *ngIf="formError()">{{ formError() }}</div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" [disabled]="creating()">
+          {{ creating() ? 'Création...' : 'Créer le projet' }}
+        </button>
+      </div>
+    </form>
+  </div>
+ 
+  <!-- Table -->
+  <div class="table-wrapper">
+    <div *ngIf="loading()" class="loading-state">Chargement...</div>
+    <table *ngIf="!loading()">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Projet</th>
+          <th>Repository</th>
+          <th>Branche</th>
+          <th>Owner</th>
+          <th>VCS</th>
+          <th>Créé le</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of projects()">
+          <td class="td-id">{{ p.id }}</td>
+          <td class="td-name">{{ p.name }}</td>
+          <td class="td-url">
+            <a [href]="p.repositoryUrl" target="_blank" rel="noopener">
+              {{ p.repositoryUrl | slice:0:42 }}{{ p.repositoryUrl.length > 42 ? '…' : '' }}
+            </a>
+          </td>
+          <td><span class="tag tag-blue">{{ p.branch }}</span></td>
+          <td class="td-owner">{{ p.owner || '—' }}</td>
+          <td><span class="tag">{{ p.vcsType }}</span></td>
+          <td class="td-date">{{ p.createdAt | date:'dd/MM/yyyy' }}</td>
+          <td>
+            <button class="btn-del" (click)="delete(p.id, p.name)">Supprimer</button>
+          </td>
+        </tr>
+        <tr *ngIf="projects().length === 0">
+          <td colspan="8" class="empty-row">
+            Aucun projet. Créez votre premier projet en haut.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+ 

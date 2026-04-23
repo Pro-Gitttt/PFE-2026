@@ -1,0 +1,87 @@
+.page { max-width: 1000px; }
+ 
+.page-header { margin-bottom: 1.5rem;
+  h1 { font-size: 1.55rem; font-weight: 700; color: #1a1f2e; letter-spacing: -0.4px; margin: 0 0 5px; }
+  p  { font-size: 0.85rem; color: #999; margin: 0; }
+}
+ 
+.selector-bar { display:flex; align-items:center; gap:14px; background:#fff; border:1px solid #eaecf0; border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.5rem; box-shadow:0 1px 3px rgba(0,0,0,.04);
+  label { font-size:.82rem; font-weight:600; color:#555; white-space:nowrap; }
+  select { border:1.5px solid #e5e7eb; border-radius:8px; padding:.55rem 1rem; font-size:.875rem; min-width:240px; background:#fff; color:#1a1f2e; outline:none; appearance:none; cursor:pointer;
+    &:focus { border-color:#1d9e75; }
+  }
+}
+ 
+.loading-state { display:flex; align-items:center; gap:12px; padding:2rem; color:#aaa; font-size:.875rem; }
+.spinner { width:18px; height:18px; border:2px solid #e5e7eb; border-top-color:#1d9e75; border-radius:50%; animation:spin .75s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+ 
+.scans-list { display:flex; flex-direction:column; gap:10px; }
+ 
+.scan-card { background:#fff; border-radius:14px; border:1px solid #eaecf0; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04);
+  &.blocked { border-left:4px solid #dc2626; }
+  &.passed  { border-left:4px solid #16a34a; }
+}
+ 
+.scan-header { display:flex; align-items:center; gap:16px; padding:1.2rem 1.4rem; width:100%; background:none; border:none; cursor:pointer; text-align:left; transition:background .15s; flex-wrap:wrap;
+  &:hover { background:#fafafa; }
+}
+ 
+// Score ring
+.score-ring { position:relative; width:56px; height:56px; flex-shrink:0; }
+.ring-svg { transform:rotate(-90deg); width:56px; height:56px; }
+.ring-bg { fill:none; stroke:#f0f0f0; stroke-width:3.5; }
+.ring-fill { fill:none; stroke-width:3.5; stroke-linecap:round; transition:stroke-dasharray .6s ease;
+  &.good { stroke:#16a34a; }
+  &.warn { stroke:#d97706; }
+  &.bad  { stroke:#dc2626; }
+}
+.ring-text { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.ring-val  { font-size:.9rem; font-weight:700; color:#1a1f2e; line-height:1; }
+ 
+.scan-meta { display:flex; flex-direction:column; gap:3px; flex-shrink:0; }
+.scan-id   { font-size:.85rem; font-weight:600; color:#1a1f2e; }
+.scan-label { font-size:.72rem; font-weight:600;
+  &.good { color:#16a34a; }
+  &.warn { color:#d97706; }
+  &.bad  { color:#dc2626; }
+}
+.scan-date { font-size:.72rem; color:#bbb; }
+ 
+.scan-status { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; font-size:.75rem; font-weight:600; background:#f0fdf4; color:#16a34a;
+  &.blocked { background:#fef2f2; color:#dc2626; }
+}
+ 
+.severity-summary { display:flex; gap:5px; flex-wrap:wrap; flex:1; }
+ 
+.sev-pill { display:inline-block; padding:2px 9px; border-radius:20px; font-size:.7rem; font-weight:600;
+  &.critical, &.CRITICAL { background:#fef2f2; color:#dc2626; }
+  &.high,     &.HIGH     { background:#fffbeb; color:#d97706; }
+  &.medium,   &.MEDIUM   { background:#faf5ff; color:#7c3aed; }
+  &.low,      &.LOW      { background:#eff6ff; color:#2563eb; }
+}
+ 
+.chevron { flex-shrink:0; color:#aaa; transition:transform .2s;
+  &.open { transform:rotate(180deg); }
+}
+ 
+.vuln-section { border-top:1.5px solid #f3f4f6; overflow-x:auto; }
+ 
+table { width:100%; border-collapse:collapse; font-size:.85rem; min-width:600px;
+  th { background:#f9fafb; text-align:left; padding:.7rem 1.2rem; font-size:.72rem; color:#aaa; font-weight:600; text-transform:uppercase; letter-spacing:.5px; border-bottom:1.5px solid #f0f0f0; }
+  td { padding:.65rem 1.2rem; border-bottom:1px solid #f9fafb; }
+  tr:last-child td { border:none; }
+  tr:hover td { background:#fafafa; }
+}
+ 
+.type-tag { background:#f3f4f6; color:#555; padding:2px 8px; border-radius:5px; font-size:.72rem; font-weight:600; }
+.td-desc  { max-width:280px; }
+.td-file  { font-family:monospace; font-size:.78rem; color:#666; }
+.td-cve   { font-size:.78rem; color:#aaa; }
+ 
+.no-vulns { text-align:center; padding:1.5rem; color:#16a34a; font-size:.875rem; background:#f0fdf4; }
+ 
+.empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:3rem; gap:14px; background:#fff; border-radius:14px; border:1px solid #eaecf0;
+  p { font-size:.875rem; color:#bbb; }
+}
+ 

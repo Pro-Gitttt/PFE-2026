@@ -1,0 +1,132 @@
+<div class="page">
+ 
+  <div class="page-header">
+    <div>
+      <h1>Rapports de sécurité</h1>
+      <p *ngIf="selectedId() && !loading()">
+        {{ scans().length }} scan{{ scans().length !== 1 ? 's' : '' }} &mdash;
+        {{ totalVulns() }} vulnérabilité{{ totalVulns() !== 1 ? 's' : '' }} détectée{{ totalVulns() !== 1 ? 's' : '' }}
+      </p>
+    </div>
+  </div>
+ 
+  <!-- Project selector -->
+  <div class="selector-bar">
+    <label>Projet à analyser</label>
+    <select (change)="onProjectChange($event)">
+      <option value="">— Choisir un projet —</option>
+      <option *ngFor="let p of projects()" [value]="p.id">{{ p.name }}</option>
+    </select>
+  </div>
+ 
+  <!-- Loading -->
+  <div *ngIf="loading()" class="loading-state">
+    <div class="spinner"></div>
+    Analyse en cours...
+  </div>
+ 
+  <!-- Scans list -->
+  <div class="scans-list" *ngIf="!loading() && selectedId()">
+ 
+    <div *ngFor="let scan of scans()" class="scan-card"
+         [class.blocked]="scan.blocked" [class.passed]="!scan.blocked">
+ 
+      <!-- Scan header — click to expand -->
+      <button class="scan-header" (click)="toggleScan(scan.id)">
+ 
+        <div class="score-ring" [ngClass]="scoreClass(scan.score)">
+          <svg viewBox="0 0 36 36" class="ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            <path class="ring-fill" [ngClass]="scoreClass(scan.score)"
+                  [style.stroke-dasharray]="scan.score + ', 100'"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+          </svg>
+          <div class="ring-text">
+            <span class="ring-val">{{ scan.score | number:'1.0-0' }}</span>
+          </div>
+        </div>
+ 
+        <div class="scan-meta">
+          <div class="scan-id">Scan #{{ scan.id }}</div>
+          <div class="scan-label" [ngClass]="scoreClass(scan.score)">
+            {{ scoreLabel(scan.score) }}
+          </div>
+          <div class="scan-date">{{ scan.createdAt | date:'dd/MM/yyyy à HH:mm' }}</div>
+        </div>
+ 
+        <div class="scan-status" [class.blocked]="scan.blocked">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5">
+            <path *ngIf="!scan.blocked" d="M20 6L9 17l-5-5"/>
+            <path *ngIf="scan.blocked" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          {{ scan.blocked ? 'BLOQUÉ' : 'AUTORISÉ' }}
+        </div>
+ 
+        <div class="severity-summary">
+          <span class="sev-pill critical" *ngIf="countBySeverity(scan,'CRITICAL') > 0">
+            {{ countBySeverity(scan,'CRITICAL') }} CRITICAL
+          </span>
+          <span class="sev-pill high" *ngIf="countBySeverity(scan,'HIGH') > 0">
+            {{ countBySeverity(scan,'HIGH') }} HIGH
+          </span>
+          <span class="sev-pill medium" *ngIf="countBySeverity(scan,'MEDIUM') > 0">
+            {{ countBySeverity(scan,'MEDIUM') }} MEDIUM
+          </span>
+          <span class="sev-pill low" *ngIf="countBySeverity(scan,'LOW') > 0">
+            {{ countBySeverity(scan,'LOW') }} LOW
+          </span>
+        </div>
+ 
+        <svg class="chevron" width="16" height="16" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             [class.open]="activeScanId() === scan.id">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+ 
+      </button>
+ 
+      <!-- Vulnerabilities table — expandable -->
+      <div class="vuln-section" *ngIf="activeScanId() === scan.id">
+        <table *ngIf="scan.vulnerabilities?.length">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Sévérité</th>
+              <th>Description</th>
+              <th>Fichier</th>
+              <th>CVE</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let v of scan.vulnerabilities">
+              <td><span class="type-tag">{{ v.type }}</span></td>
+              <td>
+                <span class="sev-pill" [ngClass]="sevClass(v.severity)">
+                  {{ v.severity }}
+                </span>
+              </td>
+              <td class="td-desc">{{ v.description }}</td>
+              <td class="td-file">{{ v.filePath || '—' }}</td>
+              <td class="td-cve">{{ v.cve || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div *ngIf="!scan.vulnerabilities?.length" class="no-vulns">
+          ✓ Aucune vulnérabilité détectée
+        </div>
+      </div>
+ 
+    </div>
+ 
+    <div *ngIf="scans().length === 0" class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ddd" stroke-width="1.5">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <p>Aucun scan pour ce projet</p>
+    </div>
+ 
+  </div>
+ 
+</div>
+ 
