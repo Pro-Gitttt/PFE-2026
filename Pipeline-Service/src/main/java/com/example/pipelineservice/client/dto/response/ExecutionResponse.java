@@ -16,6 +16,7 @@ public class ExecutionResponse {
     private LocalDateTime              startTime;
     private LocalDateTime              endTime;
     private Integer                    jenkinsBuildNumber;
-    private String                     jenkinsBuildUrl;   // link to Jenkins console
+    private String                     jenkinsBuildUrl;
+    private Long                    jenkinsQueueId;// link to Jenkins console
     private List<StageExecutionResponse> stages;
 }

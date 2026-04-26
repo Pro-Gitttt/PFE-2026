@@ -2,23 +2,15 @@ package com.example.pipelineservice.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
-/**
- * Tracks one run of a Pipeline triggered via Jenkins.
- *
- * FIXES:
- * - Added jenkinsQueueId  → returned by Jenkins POST /buildWithParameters
- * - Added jenkinsBuildNumber → resolved after job leaves Jenkins queue
- * - Added jenkinsBuildUrl → direct link to Jenkins console
- * - Removed @Data (Lombok conflict)
- * - Default status = PENDING (not null)
- * - @PrePersist for timestamps
- */
 @Entity
 @Table(name = "pipeline_execution")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class PipelineExecution {
 
@@ -26,37 +18,71 @@ public class PipelineExecution {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 0 = triggered by webhook/system */
-    private Long triggeredBy;
+    // =========================
+    // TRIGGER INFO
+    // =========================
+
+    // ⚠️ FIX: should be String (userId/email/token usually NOT numeric safe)
+    private String triggeredBy;
 
     private String commitHash;
 
-    /** Jenkins queue item ID — from Location header after trigger */
+    // =========================
+    // JENKINS TRACKING
+    // =========================
+
+    /**
+     * Jenkins queue item ID (/queue/item/{id})
+     */
+    @Column(name = "jenkins_queue_id")
     private Long jenkinsQueueId;
 
-    /** Jenkins build number — resolved once job leaves queue */
+    /**
+     * Jenkins build number (assigned after execution starts)
+     */
+    @Column(name = "jenkins_build_number")
     private Integer jenkinsBuildNumber;
 
-    /** Deep link to Jenkins console output */
+    /**
+     * Jenkins build URL
+     */
+    @Column(name = "jenkins_build_url")
     private String jenkinsBuildUrl;
 
-    @Column(nullable = false)
-    private LocalDateTime startTime;
-
-    private LocalDateTime endTime;
+    // =========================
+    // STATUS / TIMING
+    // =========================
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private PipelineStatus status = PipelineStatus.PENDING;
 
+    private LocalDateTime startTime;
+
+    private LocalDateTime endTime;
+
+    // =========================
+    // RELATION
+    // =========================
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pipeline_id", nullable = false)
     private Pipeline pipeline;
 
+    // =========================
+    // AUTO INIT
+    // =========================
+
     @PrePersist
     public void prePersist() {
-        if (startTime == null) startTime = LocalDateTime.now();
-        if (status    == null) status    = PipelineStatus.PENDING;
+
+        if (startTime == null) {
+            startTime = LocalDateTime.now();
+        }
+
+        if (status == null) {
+            status = PipelineStatus.PENDING;
+        }
     }
 }

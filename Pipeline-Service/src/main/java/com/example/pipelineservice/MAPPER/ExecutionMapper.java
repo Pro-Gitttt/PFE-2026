@@ -11,7 +11,6 @@ import java.util.List;
 @Component
 public class ExecutionMapper {
 
-
     public ExecutionResponse toResponse(PipelineExecution execution,
                                         List<StageExecution> stages) {
 
@@ -22,17 +21,12 @@ public class ExecutionMapper {
                 .status(execution.getStatus())
                 .startTime(execution.getStartTime())
                 .endTime(execution.getEndTime())
-                .build();
-    }
-    private StageExecutionResponse mapStage(StageExecution stageExec) {
 
-        return StageExecutionResponse.builder()
-                .stageId(stageExec.getStage().getId())
-                .stageName(stageExec.getStage().getName())
-                .stageType(stageExec.getStage().getType())
-                .status(stageExec.getStatus())
-                .startTime(stageExec.getStartTime())
-                .endTime(stageExec.getEndTime())
+                // Jenkins fields (ALL STRING except build number)
+                .jenkinsBuildNumber(execution.getJenkinsBuildNumber())
+                .jenkinsBuildUrl(execution.getJenkinsBuildUrl())
+                .jenkinsQueueId(execution.getJenkinsQueueId())
+
                 .build();
     }
 }

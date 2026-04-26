@@ -5,6 +5,6 @@ import lombok.Data;
 @Data
 public class ExecutionRequest {
 
-    private Long userId;
+    private String userId;
     private String commitHash;
 }
