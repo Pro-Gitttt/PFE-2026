@@ -11,24 +11,19 @@ import java.util.List;
 @Component
 public class ExecutionMapper {
 
-    public ExecutionResponse toResponse(PipelineExecution execution,
-                                        List<StageExecution> stageExecutions) {
 
-        List<StageExecutionResponse> stages =
-                stageExecutions.stream()
-                        .map(this::mapStage)
-                        .toList();
+    public ExecutionResponse toResponse(PipelineExecution execution,
+                                        List<StageExecution> stages) {
 
         return ExecutionResponse.builder()
                 .id(execution.getId())
                 .pipelineId(execution.getPipeline().getId())
+                .commitHash(execution.getCommitHash())
                 .status(execution.getStatus())
                 .startTime(execution.getStartTime())
                 .endTime(execution.getEndTime())
-                .stages(stages)
                 .build();
     }
-
     private StageExecutionResponse mapStage(StageExecution stageExec) {
 
         return StageExecutionResponse.builder()

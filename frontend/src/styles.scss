@@ -1,8 +1,22 @@
-*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-html, body { height:100%; font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif; font-size:14px; line-height:1.5; color:#1a1a2e; background:#f0f2f5; -webkit-font-smoothing:antialiased; }
-::-webkit-scrollbar { width:5px; height:5px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:#d0d0d0; border-radius:3px; }
-a { color:#1d9e75; }
-strong { font-weight:600; }
- 
+.modern-navbar {
+  display: flex !important;
+  gap: 15px;
+  padding: 12px;
+  margin: 10px;
+  background: #111;
+  border-radius: 14px;
+  width: fit-content;
+}
+
+.modern-navbar a {
+  color: white;
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  transition: 0.3s;
+}
+
+.modern-navbar a:hover {
+  background: #0dcaf0;
+  color: black;
+}

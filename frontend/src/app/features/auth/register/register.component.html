@@ -91,7 +91,7 @@
 
         </div>
 
-        <!-- ERROR (FIXED SIGNAL) -->
+        <!-- ERROR -->
         <p class="alert-error" *ngIf="error()">
           {{ error() }}
         </p>
@@ -107,6 +107,14 @@
         </button>
 
       </form>
+
+      <!-- 🔁 NAVIGATION -->
+      <div class="form-footer">
+        <p class="auth-link">
+          Déjà inscrit ?
+          <a routerLink="/auth/login">Se connecter →</a>
+        </p>
+      </div>
 
     </div>
 

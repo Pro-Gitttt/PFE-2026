@@ -43,7 +43,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String username = claims.getSubject();
             String role = claims.get("role", String.class);
 
-            // ✅ FIX: avoid ROLE_ROLE_ADMIN
             String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
 
             UsernamePasswordAuthenticationToken auth =

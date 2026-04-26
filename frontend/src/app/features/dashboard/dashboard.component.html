@@ -4,25 +4,39 @@
   <div class="welcome glass fade-in">
     <div>
       <h1>Tableau de bord</h1>
+
       <p>
-        Bienvenue, 
-        <strong class="user">{{ auth.username }}</strong>
-        <span class="role">{{ auth.role }}</span>
+        Bienvenue,
+
+        <!-- SAFE ACCESS -->
+        <strong class="user">
+          {{ auth.currentUser()?.username || 'Utilisateur' }}
+        </strong>
+
+        <span class="role">
+          {{ auth.currentUser()?.role || '' }}
+        </span>
       </p>
     </div>
+
+    <!-- ✅ FIXED DATE (NO 'fr') -->
     <div class="welcome-date">
-      {{ today | date:'EEEE d MMMM yyyy':'':'fr' }}
+      {{ today | date:'EEEE d MMMM yyyy' }}
     </div>
   </div>
 
   <!-- KPI -->
-  <div class="kpis" *ngIf="!loading()">
-    <div class="kpi hover-card" *ngFor="let card of [
-      {value: kpis().projects, label:'Projets', color:'blue'},
-      {value: kpis().succeeded, label:'Succès', color:'green'},
-      {value: kpis().failed, label:'Échecs', color:'red'},
-      {value: kpis().blocked, label:'Bloqués', color:'orange'}
-    ]">
+  <div class="kpis" *ngIf="!loading(); else skeletonKpis">
+
+    <div
+      class="kpi hover-card"
+      *ngFor="let card of [
+        {value: kpis().projects, label:'Projets', color:'blue'},
+        {value: kpis().succeeded, label:'Succès', color:'green'},
+        {value: kpis().failed, label:'Échecs', color:'red'},
+        {value: kpis().blocked, label:'Bloqués', color:'orange'}
+      ]"
+    >
 
       <div class="kpi-left">
         <span class="kpi-value">{{ card.value }}</span>
@@ -30,8 +44,16 @@
       </div>
 
       <div class="kpi-icon" [ngClass]="card.color"></div>
+
     </div>
   </div>
+
+  <!-- KPI SKELETON -->
+  <ng-template #skeletonKpis>
+    <div class="kpis">
+      <div class="kpi skeleton" *ngFor="let _ of [1,2,3,4]"></div>
+    </div>
+  </ng-template>
 
   <!-- GRID -->
   <div class="grid-2">
@@ -43,19 +65,36 @@
         <a routerLink="/projects">Voir tout →</a>
       </div>
 
-      <table *ngIf="!loading()">
+      <table *ngIf="!loading(); else projectsSkeleton">
         <tbody>
+
           <tr *ngFor="let p of projects().slice(0, 6)">
             <td>
               <strong>{{ p.name }}</strong>
               <div class="sub">{{ p.branch }}</div>
             </td>
+
             <td>
               <span class="tag">{{ p.vcsType }}</span>
             </td>
           </tr>
+
+          <tr *ngIf="projects().length === 0">
+            <td colspan="2" class="empty-cell">
+              Aucun projet
+            </td>
+          </tr>
+
         </tbody>
       </table>
+
+      <!-- SKELETON -->
+      <ng-template #projectsSkeleton>
+        <div class="skeleton-rows">
+          <div class="skel-row" *ngFor="let _ of [1,2,3]"></div>
+        </div>
+      </ng-template>
+
     </div>
 
     <!-- ALERTS -->
@@ -66,23 +105,38 @@
       </div>
 
       <div class="alerts">
-        <div *ngFor="let n of notifications().slice(0,6)" class="alert-row">
 
-          <div class="alert-dot" [ngClass]="eventColor(n.eventType)"></div>
+        <div
+          *ngFor="let n of notifications().slice(0,6)"
+          class="alert-row"
+        >
+
+          <div
+            class="alert-dot"
+            [ngClass]="eventColor(n.eventType)"
+          ></div>
 
           <div class="alert-info">
             <span>{{ n.eventType }}</span>
             <small>{{ n.createdAt | date:'dd/MM HH:mm' }}</small>
           </div>
 
-          <span class="status-pill"
-                [class.ok]="n.status==='SENT'"
-                [class.fail]="n.status==='FAILED'"
-                [class.pending]="n.status==='PENDING'">
+          <span
+            class="status-pill"
+            [class.ok]="n.status==='SENT'"
+            [class.fail]="n.status==='FAILED'"
+            [class.pending]="n.status==='PENDING'"
+          >
             {{ n.status }}
           </span>
 
         </div>
+
+        <!-- EMPTY STATE -->
+        <div *ngIf="notifications().length === 0" class="empty-cell">
+          Aucune notification
+        </div>
+
       </div>
     </div>
 

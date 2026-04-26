@@ -1,100 +1,136 @@
-// ── login.component.html ───────────────────────────────────────
-<div class="auth-page">
-  <div class="auth-card">
- 
-    <!-- Header -->
-    <div class="auth-brand">
-      <div class="brand-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2.5">
+<div class="auth-shell" [class.ready]="ready()">
+
+  <!-- ── Left Panel ───────────────────────────── -->
+  <div class="brand-panel">
+
+    <div class="brand-content">
+      <div class="brand-logo">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+             stroke="white" stroke-width="2.5" stroke-linecap="round">
           <path d="M12 2L2 7l10 5 10-5-10-5z"/>
           <path d="M2 17l10 5 10-5"/>
           <path d="M2 12l10 5 10-5"/>
         </svg>
       </div>
-      <div>
-        <p class="brand-name">DevSecOps STB</p>
-        <p class="brand-sub">Plateforme CI/CD sécurisée</p>
+
+      <div class="brand-headline">
+        <h1>DevSecOps<br><em>STB</em></h1>
+        <p>Plateforme de sécurité CI/CD pour les équipes modernes</p>
+      </div>
+
+      <div class="feature-list">
+        <div class="feature-item">
+          <div class="feature-dot"></div>
+          <span>Pipelines automatisés sécurisés</span>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot"></div>
+          <span>Analyse de vulnérabilités en temps réel</span>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot"></div>
+          <span>Déploiement Kubernetes orchestré</span>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot"></div>
+          <span>Monitoring Prometheus & Grafana</span>
+        </div>
       </div>
     </div>
- 
-    <h2>Connexion</h2>
-    <p class="auth-lead">Accédez à votre plateforme</p>
- 
-    <!-- Form -->
-    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
- 
-      <div class="field">
-        <label for="username">Nom d'utilisateur</label>
-        <input
-          id="username"
-          formControlName="username"
-          type="text"
-          placeholder="Entrez votre username"
-          autocomplete="username"
-          [class.invalid]="f['username'].touched && f['username'].invalid"
-        />
-        <span class="field-error"
-              *ngIf="f['username'].touched && f['username'].hasError('required')">
-          Ce champ est requis
-        </span>
-        <span class="field-error"
-              *ngIf="f['username'].touched && f['username'].hasError('minlength')">
-          Minimum 3 caractères
-        </span>
-      </div>
- 
-      <div class="field">
-        <label for="password">Mot de passe</label>
-        <div class="input-group">
-          <input
-            id="password"
-            formControlName="password"
-            [type]="showPass() ? 'text' : 'password'"
-            placeholder="Minimum 6 caractères"
-            autocomplete="current-password"
-            [class.invalid]="f['password'].touched && f['password'].invalid"
-          />
-          <button type="button" class="input-suffix" (click)="togglePass()">
-            <svg *ngIf="!showPass()" width="16" height="16" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-            <svg *ngIf="showPass()" width="16" height="16" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-              <line x1="1" y1="1" x2="23" y2="23"/>
-            </svg>
-          </button>
-        </div>
-        <span class="field-error"
-              *ngIf="f['password'].touched && f['password'].hasError('required')">
-          Ce champ est requis
-        </span>
-      </div>
- 
-      <div class="api-error" *ngIf="error()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        {{ error() }}
-      </div>
- 
-      <button type="submit" class="btn-submit" [disabled]="loading()">
-        <span *ngIf="!loading()">Se connecter</span>
-        <span *ngIf="loading()" class="spinner"></span>
-      </button>
- 
-    </form>
- 
-    <p class="auth-footer">
-      Pas encore de compte ?
-      <a routerLink="/auth/register">Créer un compte</a>
-    </p>
- 
+
+    <div class="deco deco-1"></div>
+    <div class="deco deco-2"></div>
+    <div class="deco deco-3"></div>
   </div>
+
+  <!-- ── Right Panel ───────────────────────────── -->
+  <div class="form-panel">
+    <div class="form-inner">
+
+      <div class="form-header">
+        <h2>Connexion</h2>
+        <p>Accédez à votre espace de travail</p>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+
+        <!-- USERNAME -->
+        <div class="field"
+             [class.has-error]="form.get('username')?.touched && form.get('username')?.invalid">
+
+          <label for="username">Nom d'utilisateur</label>
+
+          <input
+            id="username"
+            formControlName="username"
+            type="text"
+            placeholder="Entrez votre username"
+            autocomplete="username"
+          />
+
+          <div class="field-error" *ngIf="form.get('username')?.touched">
+            <span *ngIf="form.get('username')?.hasError('required')">
+              Ce champ est requis
+            </span>
+            <span *ngIf="form.get('username')?.hasError('minlength')">
+              Minimum 3 caractères
+            </span>
+          </div>
+        </div>
+
+        <!-- PASSWORD -->
+        <div class="field"
+             [class.has-error]="form.get('password')?.touched && form.get('password')?.invalid">
+
+          <label for="password">Mot de passe</label>
+
+          <div class="field-with-action">
+            <input
+              id="password"
+              formControlName="password"
+              [type]="showPass() ? 'text' : 'password'"
+              placeholder="Votre mot de passe"
+              autocomplete="current-password"
+            />
+
+            <button type="button" class="toggle-pass" (click)="togglePass()">
+              <span *ngIf="!showPass()">👁</span>
+              <span *ngIf="showPass()">🙈</span>
+            </button>
+          </div>
+
+          <div class="field-error" *ngIf="form.get('password')?.touched">
+            <span *ngIf="form.get('password')?.hasError('required')">
+              Ce champ est requis
+            </span>
+            <span *ngIf="form.get('password')?.hasError('minlength')">
+              Minimum 6 caractères
+            </span>
+          </div>
+        </div>
+
+        <!-- ERROR -->
+        <div class="alert-error" *ngIf="error()">
+          {{ error() }}
+        </div>
+
+        <!-- SUBMIT -->
+        <button type="submit" class="btn-submit" [disabled]="loading()">
+          <span *ngIf="!loading()">Se connecter</span>
+          <span *ngIf="loading()">Connexion...</span>
+        </button>
+
+      </form>
+
+      <!-- 🔁 NAVIGATION -->
+      <div class="form-footer">
+        <p class="auth-link">
+          Pas encore de compte ?
+          <a routerLink="/auth/register">Créer un compte →</a>
+        </p>
+      </div>
+
+    </div>
+  </div>
+
 </div>

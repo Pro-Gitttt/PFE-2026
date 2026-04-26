@@ -1,38 +1,36 @@
-import { Routes } from "@angular/router";
-import { RegisterComponent } from "../features/auth/register/register.component";
-import { DashboardComponent } from "../features/dashboard/dashboard.component";
-import { NotificationsComponent } from "../features/notifications/notifications.component";
-import { PipelinesComponent } from "../features/pipelines/pipelines.component";
-import { ProjectsComponent } from "../features/projects/projects.component";
-import { SecurityComponent } from "../features/security/security.component";
-
+import { Routes } from '@angular/router';
+ 
 export const SHELL_ROUTES: Routes = [
   {
     path: 'dashboard',
-    component: DashboardComponent,
+    loadComponent: () =>
+      import('../features/dashboard/dashboard.component')
+        .then(m => m.DashboardComponent),
   },
   {
     path: 'projects',
-    component: ProjectsComponent,
+    loadComponent: () =>
+      import('../features/projects/projects.component')
+        .then(m => m.ProjectsComponent),
   },
   {
     path: 'pipelines',
-    component: PipelinesComponent,
+    loadComponent: () =>
+      import('../features/pipelines/pipelines.component')
+        .then(m => m.PipelinesComponent),
   },
   {
     path: 'security',
-    component: SecurityComponent,
+    loadComponent: () =>
+      import('../features/security/security.component')
+        .then(m => m.SecurityComponent),
   },
   {
     path: 'notifications',
-    component: NotificationsComponent,
+    loadComponent: () =>
+      import('../features/notifications/notifications.component')
+        .then(m => m.NotificationsComponent),
   },
-
-  // ✅ ADD THIS
-  {
-    path: 'register',
-    component: RegisterComponent,
-  },
-
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 ];
+ 

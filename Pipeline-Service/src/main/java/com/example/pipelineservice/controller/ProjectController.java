@@ -16,53 +16,56 @@ public class ProjectController {
 
     private final ProjectService projectService;
 
+    // ─────────────────────────────
+    // CREATE
+    // ─────────────────────────────
     @PostMapping
     public ProjectResponse createProject(
-            @RequestBody CreateProjectRequest request,
-            Authentication auth
+            @RequestBody CreateProjectRequest request
     ) {
-        return projectService.createProject(request, auth.getName());
+        return projectService.createProject(request);
     }
 
+    // ─────────────────────────────
+    // GET ALL
+    // ─────────────────────────────
     @GetMapping
-    public List<ProjectResponse> getProjects(Authentication auth) {
-        String username = auth.getName();
-        String role = auth.getAuthorities().iterator().next().getAuthority();
-
-        return projectService.getProjects(username, role);
+    public List<ProjectResponse> getProjects() {
+        return projectService.getProjects();
     }
 
+    // ─────────────────────────────
+    // GET BY ID
+    // ─────────────────────────────
     @GetMapping("/{id}")
-    public ProjectResponse getProject(
-            @PathVariable Long id,
-            Authentication auth
-    ) {
-        String username = auth.getName();
-        String role = auth.getAuthorities().iterator().next().getAuthority();
-
-        return projectService.getProjectById(id, username, role);
+    public ProjectResponse getProject(@PathVariable Long id) {
+        return projectService.getProjectById(id);
     }
 
+    // ─────────────────────────────
+    // UPDATE
+    // ─────────────────────────────
     @PutMapping("/{id}")
     public ProjectResponse updateProject(
             @PathVariable Long id,
-            @RequestBody CreateProjectRequest request,
-            Authentication auth
+            @RequestBody CreateProjectRequest request
     ) {
-        String username = auth.getName();
-        String role = auth.getAuthorities().iterator().next().getAuthority();
-
-        return projectService.updateProject(id, request, username, role);
+        return projectService.updateProject(id, request);
     }
 
+    // ─────────────────────────────
+    // DELETE (SOFT DELETE)
+    // ─────────────────────────────
     @DeleteMapping("/{id}")
-    public void deleteProject(
-            @PathVariable Long id,
-            Authentication auth
-    ) {
-        String username = auth.getName();
-        String role = auth.getAuthorities().iterator().next().getAuthority();
+    public void deleteProject(@PathVariable Long id) {
+        projectService.deleteProject(id);
+    }
 
-        projectService.deleteProject(id, username, role);
+    // ─────────────────────────────
+    // RESTORE (ADMIN ONLY)
+    // ─────────────────────────────
+    @PostMapping("/{id}/restore")
+    public ProjectResponse restoreProject(@PathVariable Long id) {
+        return projectService.restoreProject(id);
     }
 }

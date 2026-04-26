@@ -1,24 +1,27 @@
 import { Routes } from '@angular/router';
-
-import { DashboardComponent } from './features/dashboard/dashboard.component';
-import { ProjectsComponent } from './features/projects/projects.component';
-import { PipelinesComponent } from './features/pipelines/pipelines.component';
-import { SecurityComponent } from './features/security/security.component';
-import { NotificationsComponent } from './features/notifications/notifications.component';
-import { LoginComponent } from './features/auth/login/login.component';
-import { RegisterComponent } from './features/auth/register/register.component';
+import { authGuard } from './core/interceptors/auth.guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  // ── Public routes ──────────────────────────────
+  {
+    path: 'auth',
+    loadChildren: () =>
+      import('./features/auth/auth.routes').then(m => m.AUTH_ROUTES),
+  },
 
-  { path: 'dashboard', component: DashboardComponent },
-  { path: 'projects', component: ProjectsComponent },
-  { path: 'pipelines', component: PipelinesComponent },
-  { path: 'security', component: SecurityComponent },
-  { path: 'notifications', component: NotificationsComponent },
+  // ✅ Default route → LOGIN
+  { path: '', redirectTo: 'auth/login', pathMatch: 'full' },
 
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
+  // ── Protected routes ──────────────────────────
+  {
+    path: '',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./layout/shell.component').then(m => m.ShellComponent),
+    loadChildren: () =>
+      import('./layout/shell.routes').then(m => m.SHELL_ROUTES),
+  },
 
-  { path: '**', redirectTo: 'dashboard' }
+  // ── Fallback ──────────────────────────────────
+  { path: '**', redirectTo: 'auth/login' },
 ];

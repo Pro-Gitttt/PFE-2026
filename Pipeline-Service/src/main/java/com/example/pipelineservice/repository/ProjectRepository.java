@@ -14,8 +14,9 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     Optional<Project> findByRepositoryUrl(String repositoryUrl);
 
-    List<Project> findByCreatedBy(String createdBy);
+    List<Project> findByCreatedByAndDeletedFalse(String createdBy);
+
+    List<Project> findByDeletedFalse();
 
     boolean existsByIdAndCreatedBy(Long id, String createdBy);
 }
- 

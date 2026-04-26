@@ -6,6 +6,7 @@ import {
   FormGroup,
   Validators,
 } from '@angular/forms';
+
 import { ProjectService } from '../../core/services/project.service';
 import { CreateProjectRequest, Project, VcsType } from '../../core/models/project.model';
 
@@ -18,27 +19,26 @@ import { CreateProjectRequest, Project, VcsType } from '../../core/models/projec
 })
 export class ProjectsComponent implements OnInit {
 
-  // ✅ inject instead of constructor
   private fb = inject(FormBuilder);
   private svc = inject(ProjectService);
 
-  // ================= STATE =================
-  projects  = signal<Project[]>([]);
-  loading   = signal(true);
-  showForm  = signal(false);
-  creating  = signal(false);
+  projects = signal<Project[]>([]);
+  loading = signal(true);
+  showForm = signal(false);
+  creating = signal(false);
   formError = signal('');
 
-  // ✅ NOW this works (fb already initialized)
+  // ✅ FIXED (no enum usage, real runtime object)
   form: FormGroup = this.fb.group({
-    name:          ['', Validators.required],
+    name: ['', Validators.required],
     repositoryUrl: ['', Validators.required],
-    branch:        ['main', Validators.required],
-    owner:         [''],
-    vcsType:       ['GITHUB' as VcsType],
+    branch: ['main', Validators.required],
+    owner: [''],
+    vcsType: [VcsType.GITHUB, Validators.required],
   });
 
-  readonly vcsTypes: VcsType[] = ['GITHUB', 'GITLAB', 'BITBUCKET'];
+  // dropdown
+  readonly vcsTypes = Object.values(VcsType);
 
   ngOnInit(): void {
     this.load();
@@ -47,8 +47,8 @@ export class ProjectsComponent implements OnInit {
   load(): void {
     this.loading.set(true);
     this.svc.getAll().subscribe({
-      next:  p => {
-        this.projects.set(p);
+      next: data => {
+        this.projects.set(data);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
@@ -60,7 +60,13 @@ export class ProjectsComponent implements OnInit {
     this.formError.set('');
 
     if (!this.showForm()) {
-      this.form.reset({ branch: 'main', vcsType: 'GITHUB' });
+      this.form.reset({
+        name: '',
+        repositoryUrl: '',
+        branch: 'main',
+        owner: '',
+        vcsType: VcsType.GITHUB,
+      });
     }
   }
 
@@ -70,24 +76,30 @@ export class ProjectsComponent implements OnInit {
       return;
     }
 
-    this.creating.set(true);
-    this.formError.set('');
+    const payload: CreateProjectRequest = {
+      name: this.form.value.name?.trim(),
+      repositoryUrl: this.form.value.repositoryUrl?.trim(),
+      branch: this.form.value.branch?.trim(),
+      owner: this.form.value.owner?.trim() || undefined,
+      vcsType: this.form.value.vcsType
+    };
 
-    this.svc.create(this.form.value as CreateProjectRequest).subscribe({
+    console.log("SEND =>", payload);
+
+    this.svc.create(payload).subscribe({
       next: () => {
-        this.creating.set(false);
         this.toggleForm();
         this.load();
       },
       error: (e) => {
-        this.formError.set(e.error?.message ?? 'Erreur lors de la création');
-        this.creating.set(false);
-      },
+        console.error("ERROR =>", e.error);
+        this.formError.set(e.error?.message ?? 'Erreur création');
+      }
     });
   }
 
   delete(id: number, name: string): void {
-    if (!confirm(`Supprimer le projet "${name}" ? Cette action est irréversible.`)) return;
+    if (!confirm(`Supprimer "${name}" ?`)) return;
 
     this.svc.delete(id).subscribe({
       next: () => this.load(),

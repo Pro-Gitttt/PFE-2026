@@ -4,11 +4,13 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "project")           // explicit table name avoids reserved-word issues
-@Data
+@Table(name = "project")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -18,32 +20,40 @@ public class Project {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String name;
 
+    @Column(nullable = false)
     private String repositoryUrl;
 
+    @Column(nullable = false)
     private String branch;
 
-    /**
-     * Optional free-text owner label (team name, description, etc.)
-     * This is different from createdBy — owner is user-supplied text.
-     */
     private String owner;
 
-    /**
-     * ★ NEW — The username extracted from the JWT.
-     * Set automatically in ProjectServiceImpl.createProject().
-     * Never comes from the HTTP request body.
-     */
     @Column(nullable = false)
     private String createdBy;
 
     private LocalDateTime createdAt;
 
+    // ✅ NEW: soft delete support
+    private boolean deleted = false;
+
+    private LocalDateTime deletedAt;
+
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private VcsType vcsType;
 
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Pipeline> pipelines;
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL,
+            fetch = FetchType.LAZY, orphanRemoval = true)
+    @Builder.Default
+    private List<Pipeline> pipelines = new ArrayList<>();
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }
