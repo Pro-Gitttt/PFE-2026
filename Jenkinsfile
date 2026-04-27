@@ -9,7 +9,7 @@ pipeline {
     environment {
 
         // =========================
-        // JAVA
+        // JAVA PATHS
         // =========================
         JDK21 = "/usr/lib/jvm/java-21-openjdk-amd64"
         JDK17 = "/usr/lib/jvm/java-17-openjdk-amd64"
@@ -21,9 +21,9 @@ pipeline {
         SONAR_TOKEN = "sqa_4028d3afe1c221d943755d9e5123c8b91f770d9b"
 
         // =========================
-        // SECURITY SERVICE (FROM JENKINS GLOBAL PROPERTIES)
+        // SECURITY SERVICE (FIXED)
         // =========================
-        SECURITY_SERVICE_URL = "http://192.168.56.1:8083/api/security/scan"
+        SECURITY_SERVICE_URL = "http://192.168.1.10:8083/api/security/scan"
     }
 
     stages {
@@ -34,80 +34,69 @@ pipeline {
             }
         }
 
-        // =========================
-        // BUILD (JDK 21)
-        // =========================
         stage('Build & Test') {
             steps {
                 withEnv(["JAVA_HOME=${JDK21}", "PATH+JAVA=${JDK21}/bin"]) {
                     sh '''
-                        java -version
-                        mvn clean verify -DskipTests=false
+                    java -version
+                    mvn clean verify -DskipTests=false
                     '''
                 }
             }
         }
 
-        // =========================
-        // SONAR (JDK 17)
-        // =========================
         stage('SonarQube Analysis') {
             steps {
                 withEnv(["JAVA_HOME=${JDK17}", "PATH+JAVA=${JDK17}/bin"]) {
                     sh '''
-                        mvn sonar:sonar \
-                          -Dsonar.projectKey=devsecops-project \
-                          -Dsonar.host.url=$SONAR_URL \
-                          -Dsonar.login=$SONAR_TOKEN
+                    mvn sonar:sonar \
+                      -Dsonar.projectKey=devsecops-project \
+                      -Dsonar.host.url=$SONAR_URL \
+                      -Dsonar.login=$SONAR_TOKEN
                     '''
                 }
             }
         }
 
-        // =========================
-        // TRIVY
-        // =========================
         stage('Trivy Scan') {
             steps {
                 sh '''
-                    trivy fs --format json -o trivy.json . || true
+                trivy fs --format json -o trivy.json . || true
                 '''
             }
         }
 
-        // =========================
-        // GITLEAKS
-        // =========================
         stage('Gitleaks Scan') {
             steps {
                 sh '''
-                    gitleaks detect \
-                      --source . \
-                      --report-format json \
-                      --report-path gitleaks.json || true
+                gitleaks detect \
+                  --source . \
+                  --report-format json \
+                  --report-path gitleaks.json || true
                 '''
             }
         }
 
-        // =========================
-        // SEND TO SECURITY SERVICE
-        // =========================
         stage('Send Reports') {
             steps {
                 script {
 
-                    // fallback safe files
+                    // =========================
+                    // FIX: ensure files exist
+                    // =========================
                     sh '''
-                        test -f trivy.json || echo "{}" > trivy.json
-                        test -f gitleaks.json || echo "{}" > gitleaks.json
+                    test -f trivy.json || echo "{}" > trivy.json
+                    test -f gitleaks.json || echo "{}" > gitleaks.json
                     '''
 
+                    echo "Sending to: ${SECURITY_SERVICE_URL}"
+
                     def response = sh(script: """
-                        curl -s -X POST ${env.SECURITY_SERVICE_URL} \
-                          -F executionId=${params.EXECUTION_ID} \
-                          -F projectId=${params.PROJECT_ID} \
-                          -F trivy=@trivy.json \
-                          -F gitleaks=@gitleaks.json
+                    curl -s -X POST ${SECURITY_SERVICE_URL} \
+                      -F executionId=${EXECUTION_ID} \
+                      -F projectId=${PROJECT_ID} \
+                      -F trivy=@trivy.json \
+                      -F gitleaks=@gitleaks.json
                     """, returnStdout: true).trim()
 
                     echo "Security Response: ${response}"
