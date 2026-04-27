@@ -43,10 +43,10 @@ pipeline {
             steps {
                 withEnv(["JAVA_HOME=${JDK17}", "PATH+JAVA=${JDK17}/bin"]) {
                     sh """
-                    mvn sonar:sonar \
-                      -Dsonar.projectKey=devsecops-project \
-                      -Dsonar.host.url=${SONAR_URL} \
-                      -Dsonar.login=${SONAR_TOKEN}
+                    mvn clean verify sonar:sonar \
+                      -Dsonar.projectKey=PFE-2026 \
+                      -Dsonar.host.url=http://192.168.40.128:9000 \
+                      -Dsonar.login=$SONAR_TOKEN
                     """
                 }
             }
