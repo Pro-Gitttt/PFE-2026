@@ -22,7 +22,7 @@ pipeline {
         // =========================
         // SECURITY SERVICE
         // =========================
-        SECURITY_SERVICE_URL = "http://192.168.40.128:8083/api/security/scan"
+        SECURITY_SERVICE_URL = "http://192.168.1.50:8083/api/security/scan"
     }
 
     stages {
