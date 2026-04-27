@@ -2,30 +2,30 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'EXECUTION_ID', defaultValue: '1')
-        string(name: 'PROJECT_ID', defaultValue: '1')
+        string(name: 'EXECUTION_ID', defaultValue: '1', description: 'Execution ID')
+        string(name: 'PROJECT_ID', defaultValue: '1', description: 'Project ID')
     }
 
-environment {
+    environment {
 
-    // =========================
-    // JAVA
-    // =========================
-    JDK21 = "/usr/lib/jvm/java-21-openjdk-amd64"
-    JDK17 = "/usr/lib/jvm/java-17-openjdk-amd64"
+        // =========================
+        // JAVA
+        // =========================
+        JDK21 = "/usr/lib/jvm/java-21-openjdk-amd64"
+        JDK17 = "/usr/lib/jvm/java-17-openjdk-amd64"
 
-    // =========================
-    // SONAR
-    // =========================
-    SONAR_URL = "http://192.168.40.128:9000"
-    SONAR_TOKEN = "sqa_4028d3afe1c221d943755d9e5123c8b91f770d9b"
+        // =========================
+        // SONAR
+        // =========================
+        SONAR_URL = "http://192.168.40.128:9000"
+        SONAR_TOKEN = "sqa_4028d3afe1c221d943755d9e5123c8b91f770d9b"
 
-    // =========================
-    // SECURITY SERVICE (ADD THIS)
-    // =========================
-     SECURITY_SERVICE_URL = "${SECURITY_SERVICE_URL}"
+        // =========================
+        // SECURITY SERVICE (FROM JENKINS GLOBAL PROPERTIES)
+        // =========================
+        SECURITY_SERVICE_URL = "http://192.168.56.1:8083/api/security/scan"
+    }
 
-}
     stages {
 
         stage('Checkout') {
@@ -41,8 +41,8 @@ environment {
             steps {
                 withEnv(["JAVA_HOME=${JDK21}", "PATH+JAVA=${JDK21}/bin"]) {
                     sh '''
-                    java -version
-                    mvn clean verify -DskipTests=false
+                        java -version
+                        mvn clean verify -DskipTests=false
                     '''
                 }
             }
@@ -55,10 +55,10 @@ environment {
             steps {
                 withEnv(["JAVA_HOME=${JDK17}", "PATH+JAVA=${JDK17}/bin"]) {
                     sh '''
-                    mvn sonar:sonar \
-                      -Dsonar.projectKey=devsecops-project \
-                      -Dsonar.host.url=$SONAR_URL \
-                      -Dsonar.login=$SONAR_TOKEN
+                        mvn sonar:sonar \
+                          -Dsonar.projectKey=devsecops-project \
+                          -Dsonar.host.url=$SONAR_URL \
+                          -Dsonar.login=$SONAR_TOKEN
                     '''
                 }
             }
@@ -70,7 +70,7 @@ environment {
         stage('Trivy Scan') {
             steps {
                 sh '''
-                trivy fs --format json -o trivy.json . || true
+                    trivy fs --format json -o trivy.json . || true
                 '''
             }
         }
@@ -81,10 +81,10 @@ environment {
         stage('Gitleaks Scan') {
             steps {
                 sh '''
-                gitleaks detect \
-                  --source . \
-                  --report-format json \
-                  --report-path gitleaks.json || true
+                    gitleaks detect \
+                      --source . \
+                      --report-format json \
+                      --report-path gitleaks.json || true
                 '''
             }
         }
@@ -96,18 +96,18 @@ environment {
             steps {
                 script {
 
-                    // safety fallback (avoid null errors)
+                    // fallback safe files
                     sh '''
-                    test -f trivy.json || echo "{}" > trivy.json
-                    test -f gitleaks.json || echo "{}" > gitleaks.json
+                        test -f trivy.json || echo "{}" > trivy.json
+                        test -f gitleaks.json || echo "{}" > gitleaks.json
                     '''
 
                     def response = sh(script: """
-                    curl -s -X POST ${SECURITY_SERVICE_URL} \
-                      -F executionId=${EXECUTION_ID} \
-                      -F projectId=${PROJECT_ID} \
-                      -F trivy=@trivy.json \
-                      -F gitleaks=@gitleaks.json
+                        curl -s -X POST ${env.SECURITY_SERVICE_URL} \
+                          -F executionId=${params.EXECUTION_ID} \
+                          -F projectId=${params.PROJECT_ID} \
+                          -F trivy=@trivy.json \
+                          -F gitleaks=@gitleaks.json
                     """, returnStdout: true).trim()
 
                     echo "Security Response: ${response}"
