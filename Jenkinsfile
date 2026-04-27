@@ -8,6 +8,7 @@ pipeline {
 
     environment {
         SECURITY_SERVICE_URL = "http://192.168.40.1:8083/api/security/scan"
+        SONAR_URL = "http://192.168.40.1:9000"
     }
 
     stages {
@@ -31,7 +32,24 @@ pipeline {
         }
 
         // =========================
-        // 🔐 TRIVY SCAN
+        // 🔥 SONARQUBE SAST (REAL)
+        // =========================
+        stage('SonarQube Analysis') {
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh """
+                    sonar-scanner \
+                      -Dsonar.projectKey=devsecops-project \
+                      -Dsonar.sources=. \
+                      -Dsonar.host.url=${SONAR_URL} \
+                      -Dsonar.login=${SONAR_TOKEN}
+                    """
+                }
+            }
+        }
+
+        // =========================
+        // 🔐 TRIVY SCA
         // =========================
         stage('Trivy FS Scan') {
             steps {
@@ -42,7 +60,7 @@ pipeline {
         }
 
         // =========================
-        // 🔐 GITLEAKS SCAN (FIXED)
+        // 🔐 GITLEAKS
         // =========================
         stage('Gitleaks Scan') {
             steps {
@@ -73,9 +91,9 @@ pipeline {
                     echo "Security Response: ${response}"
 
                     if (response.contains('"blocked":true')) {
-                        error("❌ Pipeline BLOCKED by Security Service")
+                        error("❌ PIPELINE BLOCKED by Security Service")
                     } else {
-                        echo "✅ Security Passed"
+                        echo "✅ SECURITY PASSED"
                     }
                 }
             }
