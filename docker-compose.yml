@@ -1,0 +1,114 @@
+services:
+
+  # ================= MYSQL =================
+  stb-mysql:
+    image: mysql:8.0
+    container_name: stb-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: devsecops
+    ports:
+      - "3307:3306"
+    networks:
+      - stb-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  # ================= EUREKA =================
+  stb-eureka:
+    build: ./Eureka-Server
+    container_name: stb-eureka
+    restart: unless-stopped
+    ports:
+      - "8761:8761"
+    networks:
+      - stb-network
+    # IMPORTANT: no  → avoids "unhealthy" false failure
+
+  # ================= AUTH =================
+  stb-auth:
+    build: ./Auth-Service
+    container_name: stb-auth
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    depends_on:
+      - stb-eureka
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://stb-eureka:8761/eureka/
+    networks:
+      - stb-network
+
+  # ================= SECURITY =================
+  stb-security:
+    build: ./SECURITY-SERVICE
+    container_name: stb-security
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    depends_on:
+      - stb-eureka
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://stb-eureka:8761/eureka/
+    networks:
+      - stb-network
+
+  # ================= PIPELINE (DB REQUIRED) =================
+  stb-pipeline:
+    build: ./Pipeline-Service
+    container_name: stb-pipeline
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    depends_on:
+      stb-mysql:
+        condition: service_healthy
+      stb-eureka:
+        condition: service_started
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://stb-eureka:8761/eureka/
+
+      SPRING_DATASOURCE_URL: jdbc:mysql://stb-mysql:3306/devsecops?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+    networks:
+      - stb-network
+
+  # ================= NOTIFICATION =================
+  stb-notification:
+    build: ./Notification-Service
+    container_name: stb-notification
+    restart: unless-stopped
+    ports:
+      - "8087:8087"
+    depends_on:
+      - stb-eureka
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://stb-eureka:8761/eureka/
+    networks:
+      - stb-network
+
+  # ================= GATEWAY =================
+  stb-gateway:
+    build: ./Gateway
+    container_name: stb-gateway
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    depends_on:
+      - stb-eureka
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://stb-eureka:8761/eureka/
+    networks:
+      - stb-network
+
+# ================= NETWORK =================
+networks:
+  stb-network:
+    driver: bridge

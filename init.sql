@@ -1,0 +1,4 @@
+CREATE DATABASE IF NOT EXISTS authdb         CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS pipelinedb     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS securitydb     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS notificationdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
