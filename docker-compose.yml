@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
 
   # ================= MYSQL =================
@@ -9,7 +11,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: devsecops
     ports:
-      - "3307:3306"
+      - "3306:3306"
     networks:
       - stb-network
     healthcheck:
@@ -28,7 +30,6 @@ services:
       - "8761:8761"
     networks:
       - stb-network
-    # IMPORTANT: no  → avoids "unhealthy" false failure
 
   # ================= AUTH =================
   stb-auth:
@@ -38,11 +39,25 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      - stb-eureka
+      stb-mysql:
+        condition: service_healthy
+      stb-eureka:
+        condition: service_started
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://stb-eureka:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:mysql://stb-mysql:3306/devsecops?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
+      SPRING_CLOUD_CONFIG_IMPORT_CHECK_ENABLED: "false"
     networks:
       - stb-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   # ================= SECURITY =================
   stb-security:
@@ -52,13 +67,22 @@ services:
     ports:
       - "8083:8083"
     depends_on:
-      - stb-eureka
+      stb-eureka:
+        condition: service_started
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://stb-eureka:8761/eureka/
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
+      SPRING_CLOUD_CONFIG_IMPORT_CHECK_ENABLED: "false"
     networks:
       - stb-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8083/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
-  # ================= PIPELINE (DB REQUIRED) =================
+  # ================= PIPELINE =================
   stb-pipeline:
     build: ./Pipeline-Service
     container_name: stb-pipeline
@@ -72,13 +96,19 @@ services:
         condition: service_started
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://stb-eureka:8761/eureka/
-
       SPRING_DATASOURCE_URL: jdbc:mysql://stb-mysql:3306/devsecops?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
+      SPRING_CLOUD_CONFIG_IMPORT_CHECK_ENABLED: "false"
     networks:
       - stb-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   # ================= NOTIFICATION =================
   stb-notification:
@@ -88,11 +118,26 @@ services:
     ports:
       - "8087:8087"
     depends_on:
-      - stb-eureka
+      stb-mysql:
+        condition: service_healthy
+      stb-eureka:
+        condition: service_started
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://stb-eureka:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:mysql://stb-mysql:3306/notificationdb?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
+      SPRING_CLOUD_CONFIG_IMPORT_CHECK_ENABLED: "false"
+      MAIL_PASSWORD: tbey sfoe stfi wlyv
     networks:
       - stb-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8087/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   # ================= GATEWAY =================
   stb-gateway:
@@ -102,11 +147,20 @@ services:
     ports:
       - "8084:8084"
     depends_on:
-      - stb-eureka
+      stb-eureka:
+        condition: service_started
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://stb-eureka:8761/eureka/
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
+      SPRING_CLOUD_CONFIG_IMPORT_CHECK_ENABLED: "false"
     networks:
       - stb-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8084/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
 # ================= NETWORK =================
 networks:

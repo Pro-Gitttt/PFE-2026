@@ -26,16 +26,27 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
+
                 .authorizeHttpRequests(auth -> auth
+                        // ✅ allow auth endpoints
                         .requestMatchers("/api/auth/**").permitAll()
+
+                        // ✅ VERY IMPORTANT (fix Docker healthcheck)
+                        .requestMatchers("/actuator/**").permitAll()
+
+                        // everything else secured
                         .anyRequest().authenticated()
                 )
+
                 .sessionManagement(s ->
                         s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+
                 .authenticationProvider(authenticationProvider())
+
                 .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class)
+
                 .build();
     }
 
