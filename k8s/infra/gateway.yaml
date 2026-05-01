@@ -12,19 +12,19 @@ spec:
       labels: { app: api-gateway }
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
+        prometheus.io/port: "8084"
         prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: api-gateway
           image: 192.168.56.10:5000/api-gateway:latest
           ports:
-            - containerPort: 8080
+            - containerPort: 8084
           env:
             - name: EUREKA_URL
               value: http://eureka-server.infra.svc.cluster.local:8761/eureka
           readinessProbe:
-            httpGet: { path: /actuator/health, port: 8080 }
+            httpGet: { path: /actuator/health, port: 8084 }
             initialDelaySeconds: 50
             periodSeconds: 10
           resources:
@@ -40,6 +40,6 @@ spec:
   type: NodePort
   selector: { app: api-gateway }
   ports:
-    - port: 8080
-      targetPort: 8080
+    - port: 8084
+      targetPort: 8084
       nodePort: 30080

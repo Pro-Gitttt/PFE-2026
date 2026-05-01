@@ -12,14 +12,14 @@ spec:
       labels: { app: pipeline-service }
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8083"
+        prometheus.io/port: "8082"
         prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: pipeline-service
           image: 192.168.56.10:5000/pipeline-service:latest
           ports:
-            - containerPort: 8083
+            - containerPort: 8082
           env:
             - name: SPRING_DATASOURCE_URL
               value: "jdbc:mysql://mysql.infra.svc.cluster.local:3306/pipelinedb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
@@ -36,7 +36,7 @@ spec:
             - name: JENKINS_TOKEN
               value: ""
           readinessProbe:
-            httpGet: { path: /actuator/health, port: 8083 }
+            httpGet: { path: /actuator/health, port: 8082 }
             initialDelaySeconds: 60
             periodSeconds: 10
           resources:
@@ -51,5 +51,5 @@ metadata:
 spec:
   selector: { app: pipeline-service }
   ports:
-    - port: 8083
-      targetPort: 8083
+    - port: 8082
+      targetPort: 8082

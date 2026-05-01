@@ -12,14 +12,14 @@ spec:
       labels: { app: auth-service }
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8082"
+        prometheus.io/port: "8081"
         prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: auth-service
           image: 192.168.56.10:5000/auth-service:latest
           ports:
-            - containerPort: 8082
+            - containerPort: 8081
           env:
             - name: SPRING_DATASOURCE_URL
               value: "jdbc:mysql://mysql.infra.svc.cluster.local:3306/authdb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
@@ -32,7 +32,7 @@ spec:
             - name: EUREKA_URL
               value: http://eureka-server.infra.svc.cluster.local:8761/eureka
           readinessProbe:
-            httpGet: { path: /actuator/health, port: 8082 }
+            httpGet: { path: /actuator/health, port: 8081 }
             initialDelaySeconds: 60
             periodSeconds: 10
           resources:
@@ -47,5 +47,5 @@ metadata:
 spec:
   selector: { app: auth-service }
   ports:
-    - port: 8082
-      targetPort: 8082
+    - port: 8081
+      targetPort: 8081
