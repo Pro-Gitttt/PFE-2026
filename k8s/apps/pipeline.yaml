@@ -27,7 +27,7 @@ spec:
               valueFrom: { secretKeyRef: { name: db-secret, key: DB_USERNAME } }
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom: { secretKeyRef: { name: db-secret, key: DB_PASSWORD } }
-            - name: EUREKA_URL
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
               value: http://eureka-server.infra.svc.cluster.local:8761/eureka
             - name: JENKINS_URL
               value: http://192.168.56.10:8080
@@ -35,6 +35,8 @@ spec:
               value: admin
             - name: JENKINS_TOKEN
               value: "1191735d78e67c11b3cbe11fba44d16f5f"
+            - name: JWT_SECRET
+              valueFrom: { secretKeyRef: { name: jwt-secret, key: JWT_SECRET } }
           readinessProbe:
             httpGet: { path: /actuator/health, port: 8082 }
             initialDelaySeconds: 60
