@@ -34,7 +34,7 @@ spec:
             - name: JENKINS_USERNAME
               value: admin
             - name: JENKINS_TOKEN
-              value: ""
+              value: "1191735d78e67c11b3cbe11fba44d16f5f"
           readinessProbe:
             httpGet: { path: /actuator/health, port: 8082 }
             initialDelaySeconds: 60
