@@ -7,17 +7,14 @@ pipeline {
     }
 
     environment {
-
-        // JAVA
-        JDK21 = "/usr/lib/jvm/java-21-openjdk-amd64"
-        JDK17 = "/usr/lib/jvm/java-17-openjdk-amd64"
-
-        // SONAR
-        SONAR_URL = "http://192.168.40.128:9000"
-        SONAR_TOKEN = "sqa_4028d3afe1c221d943755d9e5123c8b91f770d9b"
-
-        // SECURITY SERVICE (ONLY ONE SOURCE OF TRUTH)
-        SECURITY_SERVICE_URL = "http://192.168.1.10:8083/api/security/scan"
+        JAVA_HOME_21         = "/usr/lib/jvm/java-21-openjdk-amd64"
+        JAVA_HOME_17         = "/usr/lib/jvm/java-17-openjdk-amd64"
+        REGISTRY             = "192.168.56.10:5000"
+        SONAR_URL            = "http://192.168.56.10:9000"
+        SECURITY_SERVICE_URL = "http://192.168.56.20:30083/api/security/scan"
+        K8S_INFRA            = "/var/lib/jenkins/workspace/PFE-2026/k8s/infra"
+        K8S_APPS             = "/var/lib/jenkins/workspace/PFE-2026/k8s/apps"
+        K8S_MONITORING       = "/var/lib/jenkins/workspace/PFE-2026/k8s/monitoring"
     }
 
     stages {
@@ -30,10 +27,10 @@ pipeline {
 
         stage('Build & Test') {
             steps {
-                withEnv(["JAVA_HOME=${JDK21}", "PATH+JAVA=${JDK21}/bin"]) {
+                withEnv(["JAVA_HOME=${JAVA_HOME_21}", "PATH+JAVA=${JAVA_HOME_21}/bin"]) {
                     sh '''
-                    java -version
-                    mvn clean verify -DskipTests=false
+                        java -version
+                        mvn clean verify -DskipTests=false
                     '''
                 }
             }
@@ -41,13 +38,15 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withEnv(["JAVA_HOME=${JDK17}", "PATH+JAVA=${JDK17}/bin"]) {
-                    sh """
-                    mvn clean verify sonar:sonar \
-                      -Dsonar.projectKey=PFE-2026 \
-                      -Dsonar.host.url=http://192.168.40.128:9000 \
-                      -Dsonar.login=$SONAR_TOKEN
-                    """
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    withEnv(["JAVA_HOME=${JAVA_HOME_17}", "PATH+JAVA=${JAVA_HOME_17}/bin"]) {
+                        sh """
+                            mvn sonar:sonar \
+                              -Dsonar.projectKey=PFE-2026 \
+                              -Dsonar.host.url=${SONAR_URL} \
+                              -Dsonar.login=${SONAR_TOKEN}
+                        """
+                    }
                 }
             }
         }
@@ -55,7 +54,7 @@ pipeline {
         stage('Trivy Scan') {
             steps {
                 sh '''
-                trivy fs --format json -o trivy.json . || true
+                    trivy fs --format json -o trivy.json . || true
                 '''
             }
         }
@@ -63,32 +62,30 @@ pipeline {
         stage('Gitleaks Scan') {
             steps {
                 sh '''
-                gitleaks detect \
-                  --source . \
-                  --report-format json \
-                  --report-path gitleaks.json || true
+                    gitleaks detect \
+                      --source . \
+                      --report-format json \
+                      --report-path gitleaks.json || true
                 '''
             }
         }
 
-        stage('Send Reports') {
+        stage('Send Security Reports') {
             steps {
                 script {
-
-                    // safety: avoid missing files
                     sh '''
-                    test -f trivy.json || echo "{}" > trivy.json
-                    test -f gitleaks.json || echo "{}" > gitleaks.json
+                        test -f trivy.json    || echo "{}" > trivy.json
+                        test -f gitleaks.json || echo "{}" > gitleaks.json
                     '''
 
                     echo "Sending to: ${SECURITY_SERVICE_URL}"
 
                     def response = sh(script: """
-                    curl -s -X POST ${SECURITY_SERVICE_URL} \
-                      -F executionId=${EXECUTION_ID} \
-                      -F projectId=${PROJECT_ID} \
-                      -F trivy=@trivy.json \
-                      -F gitleaks=@gitleaks.json
+                        curl -s -X POST ${SECURITY_SERVICE_URL} \
+                          -F executionId=${EXECUTION_ID} \
+                          -F projectId=${PROJECT_ID} \
+                          -F trivy=@trivy.json \
+                          -F gitleaks=@gitleaks.json
                     """, returnStdout: true).trim()
 
                     echo "Response: ${response}"
@@ -99,17 +96,89 @@ pipeline {
                 }
             }
         }
+
+        stage('Docker Build') {
+            steps {
+                withEnv(["JAVA_HOME=${JAVA_HOME_21}", "PATH+JAVA=${JAVA_HOME_21}/bin"]) {
+                    sh """
+                        docker build -t ${REGISTRY}/eureka-server:latest       ./Eureka-Server/
+                        docker build -t ${REGISTRY}/api-gateway:latest          ./Gateway/
+                        docker build -t ${REGISTRY}/auth-service:latest         ./Auth-Service/
+                        docker build -t ${REGISTRY}/pipeline-service:latest     ./Pipeline-Service/
+                        docker build -t ${REGISTRY}/security-service:latest     ./SECURITY-SERVICE/
+                        docker build -t ${REGISTRY}/notification-service:latest ./Notification-Service/
+                    """
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexus-credentials',
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASS'
+                )]) {
+                    sh """
+                        echo ${NEXUS_PASS} | docker login ${REGISTRY} \
+                          -u ${NEXUS_USER} --password-stdin
+
+                        docker push ${REGISTRY}/eureka-server:latest
+                        docker push ${REGISTRY}/api-gateway:latest
+                        docker push ${REGISTRY}/auth-service:latest
+                        docker push ${REGISTRY}/pipeline-service:latest
+                        docker push ${REGISTRY}/security-service:latest
+                        docker push ${REGISTRY}/notification-service:latest
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh """
+                    kubectl apply -f ${K8S_INFRA}/mysql.yaml
+                    kubectl apply -f ${K8S_INFRA}/eureka.yaml
+                    kubectl apply -f ${K8S_INFRA}/gateway.yaml
+
+                    kubectl apply -f ${K8S_APPS}/auth.yaml
+                    kubectl apply -f ${K8S_APPS}/pipeline.yaml
+                    kubectl apply -f ${K8S_APPS}/security.yaml
+                    kubectl apply -f ${K8S_APPS}/notification.yaml
+
+                    kubectl apply -f ${K8S_MONITORING}/prometheus.yaml
+                    kubectl apply -f ${K8S_MONITORING}/grafana.yaml
+                """
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                    echo "=== INFRA PODS ==="
+                    kubectl get pods -n infra
+
+                    echo "=== APPS PODS ==="
+                    kubectl get pods -n apps
+
+                    echo "=== MONITORING PODS ==="
+                    kubectl get pods -n monitoring
+
+                    echo "=== SERVICES ==="
+                    kubectl get svc -n infra
+                    kubectl get svc -n apps
+                '''
+            }
+        }
     }
 
     post {
         always {
             archiveArtifacts artifacts: '*.json', fingerprint: true
         }
-
         success {
-            echo "✅ PIPELINE SUCCESS"
+            echo "✅ PIPELINE SUCCESS — All services deployed!"
         }
-
         failure {
             echo "❌ PIPELINE FAILED"
         }
