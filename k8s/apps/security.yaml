@@ -35,8 +35,11 @@ spec:
                 secretKeyRef:
                   name: db-secret
                   key: DB_PASSWORD
-            - name: EUREKA_URL
+
+            # ✅ CRITICAL FIX (EUREKA)
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
               value: http://eureka-server.infra.svc.cluster.local:8761/eureka
+
           readinessProbe:
             httpGet:
               path: /actuator/health
@@ -57,10 +60,9 @@ metadata:
   name: security-service
   namespace: apps
 spec:
-  type: NodePort   # ✅ FIX
+  type: ClusterIP   # 🔥 better (internal service)
   selector:
     app: security-service
   ports:
     - port: 8083
       targetPort: 8083
-      nodePort: 30083
