@@ -44,7 +44,7 @@ services:
       stb-eureka:
         condition: service_started
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server.infra:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server.infra.svc.cluster.local:8761/eureka/
       SPRING_DATASOURCE_URL: jdbc:mysql://stb-mysql:3306/devsecops?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
@@ -70,7 +70,7 @@ services:
       stb-eureka:
         condition: service_started
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server.infra:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server.infra.svc.cluster.local:8761/eureka/
       SPRING_CLOUD_CONFIG_ENABLED: "false"
       SPRING_CLOUD_CONFIG_IMPORT_CHECK_ENABLED: "false"
     networks:
@@ -95,7 +95,7 @@ services:
       stb-eureka:
         condition: service_started
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server.infra:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server.infra.svc.cluster.local:8761/eureka/
       SPRING_DATASOURCE_URL: jdbc:mysql://stb-mysql:3306/devsecops?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
@@ -123,7 +123,7 @@ services:
       stb-eureka:
         condition: service_started
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server.infra:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server.infra.svc.cluster.local:8761/eureka/
       SPRING_DATASOURCE_URL: jdbc:mysql://stb-mysql:3306/notificationdb?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
@@ -150,7 +150,7 @@ services:
       stb-eureka:
         condition: service_started
     environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server.infra:8761/eureka/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server.infra.svc.cluster.local:8761/eureka/
       SPRING_CLOUD_CONFIG_ENABLED: "false"
       SPRING_CLOUD_CONFIG_IMPORT_CHECK_ENABLED: "false"
     networks:
