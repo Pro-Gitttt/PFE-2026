@@ -12,10 +12,6 @@ spec:
     metadata:
       labels:
         app: eureka-server
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8761"
-        prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: eureka-server
@@ -29,17 +25,10 @@ spec:
               value: "false"
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: /
               port: 8761
-            initialDelaySeconds: 45
+            initialDelaySeconds: 30
             periodSeconds: 10
-          resources:
-            requests:
-              memory: "256Mi"
-              cpu: "100m"
-            limits:
-              memory: "512Mi"
-              cpu: "250m"
 ---
 apiVersion: v1
 kind: Service
@@ -47,10 +36,9 @@ metadata:
   name: eureka-server
   namespace: infra
 spec:
-  type: NodePort   # ✅ FIX
+  type: ClusterIP
   selector:
     app: eureka-server
   ports:
     - port: 8761
       targetPort: 8761
-      nodePort: 30761

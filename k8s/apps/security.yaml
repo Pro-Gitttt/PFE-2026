@@ -38,7 +38,7 @@ spec:
 
             # ✅ CRITICAL FIX (EUREKA)
             - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
-              value: http://eureka-server.infra.svc.cluster.local:8761/eureka
+              value: http://eureka-server.infra:8761/eureka/
 
           readinessProbe:
             httpGet:
