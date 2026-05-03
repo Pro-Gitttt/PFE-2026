@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: eureka-server
   namespace: infra
+  labels:
+    app: eureka-server
 spec:
   replicas: 1
   selector:
@@ -16,19 +18,44 @@ spec:
       containers:
         - name: eureka-server
           image: 192.168.56.10:5000/eureka-server:latest
+          imagePullPolicy: Always
+
           ports:
             - containerPort: 8761
+
           env:
+            - name: SPRING_APPLICATION_NAME
+              value: "eureka-server"
+
             - name: EUREKA_CLIENT_REGISTER_WITH_EUREKA
               value: "false"
+
             - name: EUREKA_CLIENT_FETCH_REGISTRY
               value: "false"
+
           readinessProbe:
             httpGet:
-              path: /
+              path: /actuator/health
               port: 8761
-            initialDelaySeconds: 30
+            initialDelaySeconds: 40
             periodSeconds: 10
+            failureThreshold: 5
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8761
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
@@ -40,5 +67,6 @@ spec:
   selector:
     app: eureka-server
   ports:
-    - port: 8761
+    - name: http
+      port: 8761
       targetPort: 8761
