@@ -21,12 +21,42 @@ spec:
           ports:
             - containerPort: 8084
           env:
-            - name: EUREKA_URL
-              value: http://eureka-server.infra.svc.cluster.local:8761/eureka
+            # ✅ FIX 1: correct full Eureka URL (was missing /eureka path suffix in some builds)
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              value: http://eureka-server.infra.svc.cluster.local:8761/eureka/
+
+            # ✅ FIX 2: tell gateway its own hostname so Eureka registration works
+            - name: EUREKA_INSTANCE_PREFER_IP_ADDRESS
+              value: "true"
+
+            # ✅ FIX 3: CORS — allow the real frontend origin (not just localhost)
+            - name: SPRING_CLOUD_GATEWAY_GLOBALCORS_CORSCONFIGURATIONS_[/**]_ALLOWEDORIGINS
+              value: "http://192.168.56.20:30080,http://192.168.56.20,http://localhost:4200,http://localhost:3000"
+
+            - name: SPRING_CLOUD_GATEWAY_GLOBALCORS_CORSCONFIGURATIONS_[/**]_ALLOWEDMETHODS
+              value: "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+
+            - name: SPRING_CLOUD_GATEWAY_GLOBALCORS_CORSCONFIGURATIONS_[/**]_ALLOWEDHEADERS
+              value: "*"
+
+            - name: SPRING_CLOUD_GATEWAY_GLOBALCORS_CORSCONFIGURATIONS_[/**]_ALLOWCREDENTIALS
+              value: "true"
+
+            - name: SPRING_CLOUD_GATEWAY_GLOBALCORS_CORSCONFIGURATIONS_[/**]_MAXAGE
+              value: "3600"
+
+            # ✅ FIX 4: add-to-simple-url-handler-mapping must be true for CORS preflight
+            - name: SPRING_CLOUD_GATEWAY_GLOBALCORS_ADD_TO_SIMPLE_URL_HANDLER_MAPPING
+              value: "true"
+
           readinessProbe:
             httpGet: { path: /actuator/health, port: 8084 }
             initialDelaySeconds: 50
             periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: 8084 }
+            initialDelaySeconds: 90
+            periodSeconds: 20
           resources:
             requests: { memory: "256Mi", cpu: "100m" }
             limits:   { memory: "512Mi", cpu: "250m" }

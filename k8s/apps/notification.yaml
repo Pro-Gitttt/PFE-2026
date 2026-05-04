@@ -27,16 +27,33 @@ spec:
               valueFrom: { secretKeyRef: { name: db-secret, key: DB_USERNAME } }
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom: { secretKeyRef: { name: db-secret, key: DB_PASSWORD } }
+
             - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
               value: http://eureka-server.infra.svc.cluster.local:8761/eureka/
+
+            # ✅ KEY FIX
+            - name: EUREKA_INSTANCE_HOSTNAME
+              value: notification-service.apps.svc.cluster.local
+
+            - name: EUREKA_INSTANCE_PREFER_IP_ADDRESS
+              value: "false"
+
+            - name: EUREKA_INSTANCE_NONSECUREPORT
+              value: "8087"
+
             - name: SPRING_MAIL_USERNAME
               valueFrom: { secretKeyRef: { name: mail-secret, key: MAIL_USERNAME } }
             - name: SPRING_MAIL_PASSWORD
               valueFrom: { secretKeyRef: { name: mail-secret, key: MAIL_PASSWORD } }
+
           readinessProbe:
             httpGet: { path: /actuator/health, port: 8087 }
             initialDelaySeconds: 60
             periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: 8087 }
+            initialDelaySeconds: 90
+            periodSeconds: 20
           resources:
             requests: { memory: "256Mi", cpu: "100m" }
             limits:   { memory: "512Mi", cpu: "200m" }
@@ -47,6 +64,7 @@ metadata:
   name: notification-service
   namespace: apps
 spec:
+  type: ClusterIP
   selector: { app: notification-service }
   ports:
     - port: 8087

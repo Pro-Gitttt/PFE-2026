@@ -27,20 +27,37 @@ spec:
               valueFrom: { secretKeyRef: { name: db-secret, key: DB_USERNAME } }
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom: { secretKeyRef: { name: db-secret, key: DB_PASSWORD } }
+            - name: JWT_SECRET
+              valueFrom: { secretKeyRef: { name: jwt-secret, key: JWT_SECRET } }
+
             - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
               value: http://eureka-server.infra.svc.cluster.local:8761/eureka/
+
+            # ✅ KEY FIX: register with K8s DNS hostname
+            - name: EUREKA_INSTANCE_HOSTNAME
+              value: pipeline-service.apps.svc.cluster.local
+
+            - name: EUREKA_INSTANCE_PREFER_IP_ADDRESS
+              value: "false"
+
+            - name: EUREKA_INSTANCE_NONSECUREPORT
+              value: "8082"
+
             - name: JENKINS_URL
               value: http://192.168.56.10:8080
             - name: JENKINS_USERNAME
               value: admin
             - name: JENKINS_TOKEN
               value: "1191735d78e67c11b3cbe11fba44d16f5f"
-            - name: JWT_SECRET
-              valueFrom: { secretKeyRef: { name: jwt-secret, key: JWT_SECRET } }
+
           readinessProbe:
             httpGet: { path: /actuator/health, port: 8082 }
             initialDelaySeconds: 60
             periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: 8082 }
+            initialDelaySeconds: 90
+            periodSeconds: 20
           resources:
             requests: { memory: "256Mi", cpu: "150m" }
             limits:   { memory: "512Mi", cpu: "300m" }
@@ -51,6 +68,7 @@ metadata:
   name: pipeline-service
   namespace: apps
 spec:
+  type: ClusterIP
   selector: { app: pipeline-service }
   ports:
     - port: 8082
