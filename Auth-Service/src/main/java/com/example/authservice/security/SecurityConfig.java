@@ -29,9 +29,6 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
-                // CORS is handled entirely by the API Gateway — disable it here
-                // to prevent a duplicate Access-Control-Allow-Origin header.
-                .cors(cors -> cors.disable())
 
                 .authorizeHttpRequests(auth -> auth
                         // ✅ allow auth endpoints
