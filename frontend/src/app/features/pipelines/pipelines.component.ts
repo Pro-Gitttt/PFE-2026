@@ -1,19 +1,14 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { ProjectService } from '../../core/services/project.service';
 import { PipelineService } from '../../core/services/pipeline.service';
-
-import {
-  Project
-} from '../../core/models/project.model';
+import { ProjectService } from '../../core/services/project.service';
 
 import {
   Pipeline,
   PipelineExecution,
-  PipelineStatus,
-  TriggerExecutionRequest
+  PipelineStatus
 } from '../../core/models/pipeline.model';
 
 @Component({
@@ -21,108 +16,109 @@ import {
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './pipelines.component.html',
-  styleUrls: ['./pipelines.component.scss'],
+  styleUrls: ['./pipelines.component.scss']
 })
 export class PipelinesComponent implements OnInit {
 
-  projects = signal<Project[]>([]);
+  // ================= SIGNALS =================
+  projects = signal<any[]>([]);
   pipelines = signal<Pipeline[]>([]);
   executions = signal<PipelineExecution[]>([]);
-  
 
-  selectedProject = signal<Project | null>(null);
+  selectedProject = signal<any | null>(null);
   selectedPipeline = signal<Pipeline | null>(null);
 
   triggering = signal(false);
   triggerError = signal('');
 
-  commitCtrl = new FormControl('', [
-    Validators.required,
-    Validators.minLength(5),
-  ]);
+  commitCtrl = new FormControl('', [Validators.required]);
 
   constructor(
-    private projSvc: ProjectService,
-    private plSvc: PipelineService,
+    private pipelineService: PipelineService,
+    private projectService: ProjectService
   ) {}
 
+  // ================= INIT =================
   ngOnInit(): void {
-    this.projSvc.getAll().subscribe({
-      next: data => this.projects.set(data),
+    this.loadProjects();
+  }
+
+  // ================= LOAD DATA =================
+  loadProjects() {
+    this.projectService.getAll().subscribe({
+      next: res => this.projects.set(res),
+      error: () => console.error('Error loading projects')
     });
   }
 
-  onProjectChange(ev: Event): void {
-    const id = +(ev.target as HTMLSelectElement).value;
+  onProjectChange(event: any) {
+    const projectId = +event.target.value;
 
-    const project = this.projects().find(p => p.id === id) ?? null;
-    this.selectedProject.set(project);
+    if (!projectId) return;
 
+    this.selectedProject.set(projectId);
     this.selectedPipeline.set(null);
     this.executions.set([]);
 
-    if (!id) {
-      this.pipelines.set([]);
-      return;
-    }
-
-    this.plSvc.getByProject(id).subscribe({
-      next: data => this.pipelines.set(data),
+    this.pipelineService.getByProject(projectId).subscribe({
+      next: res => this.pipelines.set(res),
+      error: () => console.error('Error loading pipelines')
     });
   }
 
-  selectPipeline(p: Pipeline): void {
+  selectPipeline(p: Pipeline) {
     this.selectedPipeline.set(p);
-    this.loadExecutions(p.id);
-  }
 
-  loadExecutions(pipelineId: number): void {
-    this.plSvc.getExecutions(pipelineId).subscribe({
-      next: data => this.executions.set(data),
-      error: err => console.error(err),
+    this.pipelineService.getExecutions(p.id).subscribe({
+      next: res => this.executions.set(res),
+      error: () => console.error('Error loading executions')
     });
   }
 
-  trigger(): void {
-    const pipeline = this.selectedPipeline();
-    if (!pipeline || this.commitCtrl.invalid) return;
+  // ================= TRIGGER =================
+  trigger() {
+    if (!this.selectedPipeline() || this.commitCtrl.invalid) return;
 
     this.triggering.set(true);
     this.triggerError.set('');
 
-    const body: TriggerExecutionRequest = {
-      commitHash: this.commitCtrl.value!,
-      userId: 0, // backend extracts from JWT
-    };
-
-    this.plSvc.trigger(pipeline.id, body).subscribe({
+    this.pipelineService.trigger(
+      this.selectedPipeline()!.id,
+      {
+        commitHash: this.commitCtrl.value!,
+        userId: 1 // TODO: replace with real user
+      }
+    ).subscribe({
       next: () => {
         this.triggering.set(false);
         this.commitCtrl.reset();
-        this.loadExecutions(pipeline.id);
+
+        // reload executions
+        this.selectPipeline(this.selectedPipeline()!);
       },
-      error: (e: any) => {
-        this.triggerError.set(e?.error?.message ?? 'Error triggering pipeline');
+      error: () => {
+        this.triggerError.set('Erreur lors du trigger');
         this.triggering.set(false);
-      },
+      }
     });
   }
 
+  // ================= HELPERS =================
+
   statusClass(status: PipelineStatus): string {
     return {
-      SUCCESS: 'ok',
-      FAILED: 'fail',
-      RUNNING: 'run',
-      CREATED: 'info',
-      CANCELLED: 'warn',
-    }[status] ?? '';
+      CREATED: 'status-created',
+      RUNNING: 'status-running',
+      SUCCESS: 'status-success',
+      FAILED: 'status-failed',
+      CANCELLED: 'status-cancelled',
+      PENDING: 'status-pending'   // ✅ FIXED
+    }[status] || '';
   }
 
   getDuration(start: string, end: string): string {
-    const ms = new Date(end).getTime() - new Date(start).getTime();
-
-    if (ms < 60000) return `${Math.round(ms / 1000)}s`;
-
-    return `${Math.round(ms / 60000)}m`;
+    const diff = new Date(end).getTime() - new Date(start).getTime();
+    const seconds = Math.floor(diff / 1000);
+    return `${seconds}s`;
   }
 }
