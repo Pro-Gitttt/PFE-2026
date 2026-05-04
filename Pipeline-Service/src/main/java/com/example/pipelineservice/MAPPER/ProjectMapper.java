@@ -45,6 +45,7 @@ public class ProjectMapper {
                 .createdBy(project.getCreatedBy())     // 🔥 important for frontend filtering/debug
                 .vcsType(project.getVcsType())
                 .createdAt(project.getCreatedAt())
+                .status(project.isDeleted() ? "DISABLED" : "ACTIVE")
                 .build();
     }
 }

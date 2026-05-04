@@ -90,7 +90,7 @@ export class AuthService {
   logout(): void {
     this.clear();
     this._currentUser.set(null);
-    this.router.navigate(['/login']);
+    this.router.navigate(['/auth/login']);
   }
 
   // ================= GETTERS =================

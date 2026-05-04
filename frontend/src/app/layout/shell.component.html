@@ -20,7 +20,7 @@
  
     <nav class="nav">
       <a
-        *ngFor="let item of navItems"
+        *ngFor="let item of navItems()"
         [routerLink]="item.path"
         routerLinkActive="active"
         class="nav-item"

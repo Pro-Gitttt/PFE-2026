@@ -1,0 +1,131 @@
+<div class="page">
+
+  <div class="page-header">
+    <div>
+      <h2>Administration des utilisateurs</h2>
+      <p class="subtitle">Gérez tous les utilisateurs de la plateforme</p>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-row" *ngIf="!loading()">
+    <div class="kpi-card blue">
+      <div class="kpi-val">{{ totalUsers }}</div>
+      <div class="kpi-label">Total</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-val">{{ activeUsers }}</div>
+      <div class="kpi-label">Actifs</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-val">{{ disabledUsers }}</div>
+      <div class="kpi-label">Désactivés</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-val">{{ adminCount > 0 ? (activeUsers / totalUsers * 100 | number:'1.0-0') + '%' : '0%' }}</div>
+      <div class="kpi-label">Taux d'activité</div>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div class="alert-error" *ngIf="error()">{{ error() }}</div>
+
+  <!-- LOADING -->
+  <div class="loading-state" *ngIf="loading()">
+    <div class="spinner"></div>
+    <p>Chargement des utilisateurs...</p>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-card" *ngIf="!loading()">
+    <div class="table-header">
+      <h3>Liste des utilisateurs <span class="count">{{ totalUsers }}</span></h3>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Utilisateur</th>
+            <th>Email</th>
+            <th>Rôle</th>
+            <th>Statut</th>
+            <th>Créé le</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of users()" [class.disabled-row]="!u.enabled">
+
+            <!-- Avatar + name -->
+            <td>
+              <div class="user-cell">
+                <div class="avatar" [class.inactive]="!u.enabled">
+                  {{ u.username.slice(0,2).toUpperCase() }}
+                </div>
+                <div>
+                  <div class="username">{{ u.username }}</div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Email -->
+            <td class="email-cell">{{ u.email }}</td>
+
+            <!-- Role dropdown -->
+            <td>
+              <select
+                class="role-select"
+                [value]="u.role"
+                [disabled]="updating() === u.id"
+                (change)="changeRole(u, $any($event.target).value)"
+              >
+                <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+              </select>
+            </td>
+
+            <!-- Status badge -->
+            <td>
+              <span class="status-badge" [class.active]="u.enabled" [class.inactive]="!u.enabled">
+                {{ u.enabled ? 'ACTIF' : 'INACTIF' }}
+              </span>
+            </td>
+
+            <!-- Created at -->
+            <td class="date-cell">{{ u.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+
+            <!-- Actions -->
+            <td>
+              <div class="actions">
+                <button
+                  class="btn-toggle"
+                  [class.btn-disable]="u.enabled"
+                  [class.btn-enable]="!u.enabled"
+                  [disabled]="updating() === u.id"
+                  (click)="toggleEnabled(u)"
+                  [title]="u.enabled ? 'Désactiver' : 'Activer'"
+                >
+                  {{ updating() === u.id ? '...' : (u.enabled ? 'Désactiver' : 'Activer') }}
+                </button>
+                <button
+                  class="btn-delete"
+                  [disabled]="updating() === u.id"
+                  (click)="deleteUser(u)"
+                  title="Supprimer"
+                >
+                  🗑
+                </button>
+              </div>
+            </td>
+
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="empty" *ngIf="users().length === 0">
+      <p>Aucun utilisateur trouvé.</p>
+    </div>
+  </div>
+
+</div>

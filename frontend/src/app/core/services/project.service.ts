@@ -26,16 +26,10 @@ private readonly baseUrl = `${environment.apiPipeline}/projects`;
   }
 
   
-create(req: CreateProjectRequest): Observable<Project> {
-  const token = localStorage.getItem('token');
-
-  return this.http.post<Project>(this.baseUrl, req, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  });
-}
+  create(req: CreateProjectRequest): Observable<Project> {
+    return this.http.post<Project>(this.baseUrl, req)
+      .pipe(catchError(this.handleError));
+  }
   update(id: number, req: CreateProjectRequest): Observable<Project> {
     return this.http.put<Project>(`${this.baseUrl}/${id}`, req)
       .pipe(catchError(this.handleError));

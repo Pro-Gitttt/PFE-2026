@@ -92,7 +92,7 @@ export class PipelinesComponent implements OnInit {
 
     const body: TriggerExecutionRequest = {
       commitHash: this.commitCtrl.value!,
-      userId: 1,
+      userId: 0, // backend extracts from JWT
     };
 
     this.plSvc.trigger(pipeline.id, body).subscribe({

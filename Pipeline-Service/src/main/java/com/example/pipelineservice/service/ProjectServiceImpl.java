@@ -6,11 +6,10 @@ import com.example.pipelineservice.client.dto.response.ProjectResponse;
 import com.example.pipelineservice.entities.Project;
 import com.example.pipelineservice.exception.ResourceNotFoundException;
 import com.example.pipelineservice.repository.ProjectRepository;
+import com.example.pipelineservice.security.AuthorizationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,8 +23,9 @@ import java.util.List;
 @Slf4j
 public class ProjectServiceImpl implements ProjectService {
 
-    private final ProjectRepository projectRepository;
-    private final ProjectMapper projectMapper;
+    private final ProjectRepository  projectRepository;
+    private final ProjectMapper      projectMapper;
+    private final AuthorizationHelper auth;   // ← injected helper
 
     // ─────────────────────────────
     // CREATE
@@ -33,14 +33,14 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectResponse createProject(CreateProjectRequest request) {
 
-        String username = getUsername();
+        // DEV and DEVOPS can create projects; AUDITOR is blocked at controller level.
+        String username = auth.currentUsername();
 
         if (projectRepository.existsByName(request.getName())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Project already exists");
         }
 
         Project project = projectMapper.toEntity(request, username);
-
         return projectMapper.toResponse(projectRepository.save(project));
     }
 
@@ -48,16 +48,18 @@ public class ProjectServiceImpl implements ProjectService {
     // GET ALL
     // ─────────────────────────────
     @Override
+    @Transactional(readOnly = true)
     public List<ProjectResponse> getProjects() {
 
-        Authentication auth = getAuth();
-        String username = auth.getName();
+        String username = auth.currentUsername();
 
-        if (isAdmin(auth)) {
+        // ADMIN and DEVOPS see every project
+        if (auth.hasGlobalAccess()) {
             return projectRepository.findByDeletedFalse()
                     .stream().map(projectMapper::toResponse).toList();
         }
 
+        // DEV and AUDITOR see only their own projects
         return projectRepository.findByCreatedByAndDeletedFalse(username)
                 .stream().map(projectMapper::toResponse).toList();
     }
@@ -66,17 +68,10 @@ public class ProjectServiceImpl implements ProjectService {
     // GET BY ID
     // ─────────────────────────────
     @Override
+    @Transactional(readOnly = true)
     public ProjectResponse getProjectById(Long id) {
-
-        Authentication auth = getAuth();
-        String username = auth.getName();
-
         Project project = findOrThrow(id);
-
-        if (!isAdmin(auth) && !project.getCreatedBy().equals(username)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
-
+        assertProjectAccess(project);
         return projectMapper.toResponse(project);
     }
 
@@ -86,14 +81,8 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectResponse updateProject(Long id, CreateProjectRequest request) {
 
-        Authentication auth = getAuth();
-        String username = auth.getName();
-
         Project project = findOrThrow(id);
-
-        if (!isAdmin(auth) && !project.getCreatedBy().equals(username)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
+        assertProjectAccess(project);   // DEVOPS and ADMIN can update any project
 
         project.setName(request.getName());
         project.setRepositoryUrl(request.getRepositoryUrl());
@@ -102,7 +91,6 @@ public class ProjectServiceImpl implements ProjectService {
         if (request.getOwner() != null) {
             project.setOwner(request.getOwner());
         }
-
         if (request.getVcsType() != null) {
             project.setVcsType(request.getVcsType());
         }
@@ -115,18 +103,11 @@ public class ProjectServiceImpl implements ProjectService {
     // ─────────────────────────────
     @Override
     public void deleteProject(Long id) {
-
-        Authentication auth = getAuth();
-
         Project project = findOrThrow(id);
-
-        if (!isAdmin(auth) && !project.getCreatedBy().equals(auth.getName())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
+        assertProjectAccess(project);
 
         project.setDeleted(true);
         project.setDeletedAt(LocalDateTime.now());
-
         projectRepository.save(project);
     }
 
@@ -135,39 +116,37 @@ public class ProjectServiceImpl implements ProjectService {
     // ─────────────────────────────
     @Override
     public ProjectResponse restoreProject(Long id) {
-
-        Authentication auth = getAuth();
-
-        if (!isAdmin(auth)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin only");
+        if (!auth.isAdmin()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Only ADMIN can restore deleted projects.");
         }
 
         Project project = findOrThrow(id);
-
         project.setDeleted(false);
         project.setDeletedAt(null);
-
         return projectMapper.toResponse(projectRepository.save(project));
     }
 
     // ─────────────────────────────
     // HELPERS
     // ─────────────────────────────
-    private Authentication getAuth() {
-        return SecurityContextHolder.getContext().getAuthentication();
-    }
-
-    private String getUsername() {
-        return getAuth().getName();
-    }
-
-    private boolean isAdmin(Authentication auth) {
-        return auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-    }
 
     private Project findOrThrow(Long id) {
         return projectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + id));
+    }
+
+    /**
+     * Gate that enforces the role matrix:
+     *   ADMIN   → pass
+     *   DEVOPS  → pass
+     *   DEV     → pass only if createdBy == current user
+     *   AUDITOR → pass only if createdBy == current user (write ops blocked at controller)
+     */
+    private void assertProjectAccess(Project project) {
+        if (!auth.canAccessProject(project.getCreatedBy())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Access denied: you do not have permission to access this project.");
+        }
     }
 }

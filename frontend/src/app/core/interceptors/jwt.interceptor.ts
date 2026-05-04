@@ -4,18 +4,17 @@ import { isPlatformBrowser } from '@angular/common';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
-
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
+  const platformId = inject(PLATFORM_ID);
 
-  const token = localStorage.getItem('token');
+  if (!isPlatformBrowser(platformId)) return next(req);
 
-  console.log("TOKEN SENT =>", token);
+  // AuthService stores token under 'accessToken'
+  const token = localStorage.getItem('accessToken');
 
-  if (token && token !== "null" && token !== "undefined") {
+  if (token) {
     req = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`
-      }
+      setHeaders: { Authorization: `Bearer ${token}` }
     });
   }
 

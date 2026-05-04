@@ -15,6 +15,8 @@ export interface Project {
   createdBy: string;
   vcsType: VcsType;
   createdAt: string;
+  status?: string;
+  description?: string;
 }
 
 export interface CreateProjectRequest {

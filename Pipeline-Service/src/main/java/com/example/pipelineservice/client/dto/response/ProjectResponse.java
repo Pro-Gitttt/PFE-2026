@@ -18,4 +18,6 @@ public class ProjectResponse {
     private String createdBy;
     private VcsType vcsType;
     private LocalDateTime createdAt;
+    private String status;
+    private String description;
 }

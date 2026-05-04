@@ -1,0 +1,97 @@
+<div class="modal-backdrop" (click)="close()"></div>
+
+<div class="modal">
+  <div class="modal-header">
+    <div class="modal-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      Déploiement du projet
+    </div>
+    <button class="close-btn" (click)="close()">✕</button>
+  </div>
+
+  <div class="modal-body" *ngIf="!deploySuccess()">
+
+    <div class="project-info">
+      <div class="info-row">
+        <label>URL du repository *</label>
+        <span class="info-val">{{ project.repositoryUrl }}</span>
+      </div>
+      <div class="info-row">
+        <label>Description *</label>
+        <span class="info-val desc">{{ project.repositoryUrl }}</span>
+      </div>
+      <div class="info-row">
+        <label>Statut *</label>
+        <span class="badge-active">ACTIVE</span>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <div class="section-dot"></div>
+      Configuration du déploiement
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="deploy()" novalidate>
+
+      <div class="fields-2">
+
+        <div class="field">
+          <label>Environnement *</label>
+          <select formControlName="environment">
+            <option *ngFor="let env of environments" [value]="env.value">{{ env.label }}</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Version *</label>
+          <input formControlName="version" placeholder="v1.0.0 ou 1.0.0" />
+          <span class="hint">Format: v1.0.0 ou 1.0.0</span>
+          <span class="err" *ngIf="form.get('version')?.touched && form.get('version')?.invalid">
+            Format invalide (ex: v1.0.0)
+          </span>
+        </div>
+
+        <div class="field">
+          <label>Nom du Job Jenkins *</label>
+          <input formControlName="jenkinsJob" placeholder="Nom du job Jenkins" />
+          <span class="err" *ngIf="form.get('jenkinsJob')?.touched && form.get('jenkinsJob')?.invalid">
+            Requis
+          </span>
+        </div>
+
+        <div class="field">
+          <label>Pipeline</label>
+          <select formControlName="pipeline">
+            <option value="">-- Sélectionner un pipeline --</option>
+            <option *ngFor="let pl of pipelines()" [value]="pl.id">{{ pl.name }}</option>
+          </select>
+          <span class="hint" *ngIf="pipelines().length === 0">
+            Aucun pipeline disponible pour ce projet
+          </span>
+        </div>
+
+      </div>
+
+      <div class="alert-error" *ngIf="deployError()">{{ deployError() }}</div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="close()">✕ Annuler</button>
+        <button type="submit" class="btn-deploy" [disabled]="deploying()">
+          <span *ngIf="!deploying()">✓ Confirmer le déploiement</span>
+          <span *ngIf="deploying()">Déploiement en cours...</span>
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- SUCCESS STATE -->
+  <div class="success-state" *ngIf="deploySuccess()">
+    <div class="success-icon">✓</div>
+    <h3>Déploiement lancé !</h3>
+    <p>Le projet <strong>{{ project.name }}</strong> est en cours de déploiement.</p>
+  </div>
+
+</div>

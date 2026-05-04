@@ -14,7 +14,7 @@ import { RegisterRequest, Role } from '../../../core/models/auth.model';
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss'],
 })

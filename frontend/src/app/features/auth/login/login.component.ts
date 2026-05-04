@@ -8,6 +8,7 @@ import {
 } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { RegisterRequest, Role } from '../../../core/models/auth.model';
 
 @Component({
   selector: 'app-login',
@@ -19,11 +20,23 @@ import { AuthService } from '../../../core/services/auth.service';
 export class LoginComponent implements OnInit {
 
   form: FormGroup;
+  registerForm: FormGroup;
 
-  loading = signal(false);
-  error = signal('');
-  showPass = signal(false);
-  ready = signal(false);
+  loading      = signal(false);
+  error        = signal('');
+  showPass     = signal(false);
+  ready        = signal(false);
+  showRegister = signal(false);   // popup modal
+  regLoading   = signal(false);
+  regError     = signal('');
+  regSuccess   = signal(false);
+  showRegPass  = signal(false);
+
+  readonly roles: { value: Role; label: string; desc: string }[] = [
+    { value: 'DEV',    label: 'Developer',        desc: 'Création de projets & CI/CD' },
+    { value: 'DEVOPS', label: 'DevOps Engineer',  desc: 'Déploiement & infrastructure' },
+    { value: 'AUDITOR',label: 'Security Auditor', desc: 'Lecture seule – sécurité' },
+  ];
 
   constructor(
     private fb: FormBuilder,
@@ -34,55 +47,69 @@ export class LoginComponent implements OnInit {
       username: ['', [Validators.required, Validators.minLength(3)]],
       password: ['', [Validators.required, Validators.minLength(6)]],
     });
+    this.registerForm = this.fb.group({
+      username: ['', [Validators.required, Validators.minLength(3)]],
+      email:    ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.minLength(6)]],
+      role:     ['DEV' as Role, Validators.required],
+    });
   }
 
   ngOnInit(): void {
     setTimeout(() => this.ready.set(true), 50);
-
-    // FIX: signal must be called
     if (this.auth.isLoggedIn()) {
       this.router.navigate(['/dashboard']);
     }
   }
 
-  get f() {
-    return this.form.controls;
-  }
+  get f() { return this.form.controls; }
+  get rf() { return this.registerForm.controls; }
 
-  togglePass(): void {
-    this.showPass.update(v => !v);
+  togglePass():    void { this.showPass.update(v => !v); }
+  toggleRegPass(): void { this.showRegPass.update(v => !v); }
+
+  openRegister(): void {
+    this.showRegister.set(true);
+    this.regError.set('');
+    this.regSuccess.set(false);
+    this.registerForm.reset({ role: 'DEV' });
   }
+  closeRegister(): void { this.showRegister.set(false); }
 
   submit(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-
+    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading.set(true);
     this.error.set('');
-
-    const payload = this.form.getRawValue(); // ✅ safer than form.value
-
-    this.auth.login(payload).subscribe({
-      next: () => {
-        this.loading.set(false);
-        this.router.navigate(['/dashboard']);
-      },
-
+    this.auth.login(this.form.getRawValue()).subscribe({
+      next: () => { this.loading.set(false); this.router.navigate(['/dashboard']); },
       error: (e) => {
-        console.error('LOGIN ERROR:', e);
-
         this.error.set(
-          e.error?.message ||
-          e.error?.error ||
-          (e.status === 401
-            ? 'Identifiants incorrects'
-            : 'Erreur serveur, réessayez')
+          e.error?.message || e.error?.error ||
+          (e.status === 401 ? 'Identifiants incorrects' : 'Erreur serveur, réessayez')
         );
-
         this.loading.set(false);
-      }
+      },
+    });
+  }
+
+  register(): void {
+    if (this.registerForm.invalid) { this.registerForm.markAllAsTouched(); return; }
+    this.regLoading.set(true);
+    this.regError.set('');
+    const payload: RegisterRequest = this.registerForm.getRawValue() as RegisterRequest;
+    this.auth.register(payload).subscribe({
+      next: () => {
+        this.regLoading.set(false);
+        this.regSuccess.set(true);
+        setTimeout(() => {
+          this.closeRegister();
+          this.router.navigate(['/dashboard']);
+        }, 1500);
+      },
+      error: (e) => {
+        this.regError.set(e?.error?.message || 'Erreur inscription');
+        this.regLoading.set(false);
+      },
     });
   }
 }
