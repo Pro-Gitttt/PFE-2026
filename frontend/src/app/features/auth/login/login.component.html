@@ -1,11 +1,10 @@
 <div class="auth-shell" [class.ready]="ready()">
 
-  <!-- ── Left Panel ───────────────────────────── -->
+  <!-- ── Panneau gauche ── -->
   <div class="brand-panel">
     <div class="brand-content">
       <div class="brand-logo">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
-             stroke="white" stroke-width="2.5" stroke-linecap="round">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
           <path d="M12 2L2 7l10 5 10-5-10-5z"/>
           <path d="M2 17l10 5 10-5"/>
           <path d="M2 12l10 5 10-5"/>
@@ -13,13 +12,13 @@
       </div>
       <div class="brand-headline">
         <h1>DevSecOps<br><em>STB</em></h1>
-        <p>Plateforme de sécurité CI/CD pour les équipes modernes</p>
+        <p>Plateforme CI/CD sécurisée pour les équipes modernes</p>
       </div>
       <div class="feature-list">
-        <div class="feature-item"><div class="feature-dot"></div><span>Pipelines automatisés sécurisés</span></div>
-        <div class="feature-item"><div class="feature-dot"></div><span>Analyse de vulnérabilités en temps réel</span></div>
+        <div class="feature-item"><div class="feature-dot"></div><span>Pipelines Jenkins automatisés</span></div>
+        <div class="feature-item"><div class="feature-dot"></div><span>Scan de vulnérabilités en temps réel</span></div>
         <div class="feature-item"><div class="feature-dot"></div><span>Déploiement Kubernetes orchestré</span></div>
-        <div class="feature-item"><div class="feature-dot"></div><span>Monitoring Prometheus &amp; Grafana</span></div>
+        <div class="feature-item"><div class="feature-dot"></div><span>Monitoring & alertes centralisés</span></div>
       </div>
     </div>
     <div class="deco deco-1"></div>
@@ -27,10 +26,9 @@
     <div class="deco deco-3"></div>
   </div>
 
-  <!-- ── Right Panel ───────────────────────────── -->
+  <!-- ── Panneau droit ── -->
   <div class="form-panel">
     <div class="form-inner">
-
       <div class="form-header">
         <h2>Connexion</h2>
         <p>Accédez à votre espace de travail</p>
@@ -38,69 +36,54 @@
 
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
 
-        <!-- USERNAME -->
-        <div class="field"
-             [class.has-error]="form.get('username')?.touched && form.get('username')?.invalid">
-          <label for="username">Nom d'utilisateur</label>
-          <input id="username" formControlName="username" type="text"
-                 placeholder="Entrez votre username" autocomplete="username"/>
+        <div class="field" [class.has-error]="form.get('username')?.touched && form.get('username')?.invalid">
+          <label for="usr">Nom d'utilisateur</label>
+          <input id="usr" formControlName="username" type="text" placeholder="votre username" autocomplete="username"/>
           <div class="field-error" *ngIf="form.get('username')?.touched">
-            <span *ngIf="form.get('username')?.hasError('required')">Ce champ est requis</span>
-            <span *ngIf="form.get('username')?.hasError('minlength')">Minimum 3 caractères</span>
+            <span *ngIf="form.get('username')?.hasError('required')">Requis</span>
+            <span *ngIf="form.get('username')?.hasError('minlength')">Min 3 caractères</span>
           </div>
         </div>
 
-        <!-- PASSWORD -->
-        <div class="field"
-             [class.has-error]="form.get('password')?.touched && form.get('password')?.invalid">
-          <label for="password">Mot de passe</label>
+        <div class="field" [class.has-error]="form.get('password')?.touched && form.get('password')?.invalid">
+          <label for="pwd">Mot de passe</label>
           <div class="field-with-action">
-            <input id="password" formControlName="password"
+            <input id="pwd" formControlName="password"
                    [type]="showPass() ? 'text' : 'password'"
-                   placeholder="Votre mot de passe" autocomplete="current-password"/>
+                   placeholder="votre mot de passe" autocomplete="current-password"/>
             <button type="button" class="toggle-pass" (click)="togglePass()">
-              <span *ngIf="!showPass()">👁</span>
-              <span *ngIf="showPass()">🙈</span>
+              {{ showPass() ? '🙈' : '👁' }}
             </button>
           </div>
           <div class="field-error" *ngIf="form.get('password')?.touched">
-            <span *ngIf="form.get('password')?.hasError('required')">Ce champ est requis</span>
-            <span *ngIf="form.get('password')?.hasError('minlength')">Minimum 6 caractères</span>
+            <span *ngIf="form.get('password')?.hasError('required')">Requis</span>
+            <span *ngIf="form.get('password')?.hasError('minlength')">Min 6 caractères</span>
           </div>
         </div>
 
-        <!-- ERROR -->
         <div class="alert-error" *ngIf="error()">{{ error() }}</div>
 
-        <!-- SUBMIT -->
         <button type="submit" class="btn-submit" [disabled]="loading()">
-          <span *ngIf="!loading()">Se connecter</span>
-          <span *ngIf="loading()">Connexion...</span>
+          <span *ngIf="!loading()">Se connecter →</span>
+          <span *ngIf="loading()">Connexion en cours...</span>
         </button>
 
       </form>
 
-      <!-- Register link -->
       <div class="form-footer">
-        <p class="auth-link">
-          Pas encore de compte ?
-          <button type="button" class="link-btn" (click)="openRegister()">Créer un compte →</button>
+        <p>Pas encore de compte ?
+          <button type="button" class="link-btn" (click)="openRegister()">Créer un compte</button>
         </p>
       </div>
-
     </div>
   </div>
-
 </div>
 
-<!-- ─────────────────────── REGISTER POPUP ─────────────────────── -->
+<!-- ═══════════════ REGISTER POPUP ═══════════════ -->
 <ng-container *ngIf="showRegister()">
-
-  <div class="modal-backdrop" (click)="closeRegister()"></div>
+  <div class="reg-backdrop" (click)="closeRegister()"></div>
 
   <div class="reg-modal">
-
-    <!-- Header -->
     <div class="reg-header">
       <div>
         <h3>Créer un compte</h3>
@@ -109,18 +92,17 @@
       <button class="close-btn" type="button" (click)="closeRegister()">✕</button>
     </div>
 
-    <!-- Success -->
+    <!-- SUCCESS -->
     <div class="success-state" *ngIf="regSuccess()">
       <div class="success-icon">✓</div>
       <h4>Compte créé avec succès !</h4>
-      <p>Redirection en cours...</p>
+      <p>Redirection vers le tableau de bord...</p>
     </div>
 
-    <!-- Form -->
+    <!-- FORM -->
     <form *ngIf="!regSuccess()" [formGroup]="registerForm" (ngSubmit)="register()" novalidate class="reg-body">
 
       <div class="reg-fields">
-
         <div class="field" [class.has-error]="registerForm.get('username')?.touched && registerForm.get('username')?.invalid">
           <label>Nom d'utilisateur *</label>
           <input formControlName="username" placeholder="username" autocomplete="username"/>
@@ -130,7 +112,7 @@
         </div>
 
         <div class="field" [class.has-error]="registerForm.get('email')?.touched && registerForm.get('email')?.invalid">
-          <label>Email *</label>
+          <label>Adresse email *</label>
           <input formControlName="email" type="email" placeholder="email@stb.tn" autocomplete="email"/>
           <span class="field-error" *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.invalid">
             Email invalide
@@ -143,27 +125,37 @@
             <input formControlName="password" [type]="showRegPass() ? 'text' : 'password'"
                    placeholder="Min 6 caractères" autocomplete="new-password"/>
             <button type="button" class="toggle-pass" (click)="toggleRegPass()">
-              <span *ngIf="!showRegPass()">👁</span>
-              <span *ngIf="showRegPass()">🙈</span>
+              {{ showRegPass() ? '🙈' : '👁' }}
             </button>
           </div>
           <span class="field-error" *ngIf="registerForm.get('password')?.touched && registerForm.get('password')?.invalid">
             Min 6 caractères
           </span>
         </div>
-
       </div>
 
-      <!-- Role selection -->
+      <!-- ROLE SELECTION — 4 cartes dont ADMIN -->
       <div class="role-section">
-        <label class="role-label">Rôle</label>
+        <label class="role-section-label">Sélectionnez votre rôle *</label>
         <div class="role-grid">
-          <label *ngFor="let r of roles" class="role-card"
-                 [class.selected]="registerForm.get('role')?.value === r.value">
-            <input type="radio" formControlName="role" [value]="r.value" hidden/>
+          <div
+            *ngFor="let r of roles"
+            class="role-card"
+            [class.selected]="registerForm.get('role')?.value === r.value"
+            (click)="selectRole(r.value)"
+          >
+            <!-- Indicateur sélection -->
+            <div class="role-check" *ngIf="registerForm.get('role')?.value === r.value">✓</div>
+            <div class="role-icon">{{ r.icon }}</div>
             <div class="role-name">{{ r.label }}</div>
             <div class="role-desc">{{ r.desc }}</div>
-          </label>
+            <!-- Badge ADMIN -->
+            <div class="role-badge" *ngIf="r.value === 'ADMIN'">Accès total</div>
+          </div>
+        </div>
+        <!-- Hidden radio inputs for form binding -->
+        <div style="display:none">
+          <input *ngFor="let r of roles" type="radio" formControlName="role" [value]="r.value"/>
         </div>
       </div>
 
@@ -172,12 +164,11 @@
       <div class="reg-footer">
         <button type="button" class="btn-cancel" (click)="closeRegister()">Annuler</button>
         <button type="submit" class="btn-submit-reg" [disabled]="regLoading()">
-          <span *ngIf="!regLoading()">Créer mon compte</span>
+          <span *ngIf="!regLoading()">Créer mon compte →</span>
           <span *ngIf="regLoading()">Création...</span>
         </button>
       </div>
 
     </form>
   </div>
-
 </ng-container>

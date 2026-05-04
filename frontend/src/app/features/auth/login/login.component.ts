@@ -1,11 +1,6 @@
-import { Component, signal, OnInit } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  ReactiveFormsModule,
-  FormBuilder,
-  FormGroup,
-  Validators
-} from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { RegisterRequest, Role } from '../../../core/models/auth.model';
@@ -13,34 +8,63 @@ import { RegisterRequest, Role } from '../../../core/models/auth.model';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, OnDestroy {
 
   form: FormGroup;
   registerForm: FormGroup;
 
-  loading      = signal(false);
-  error        = signal('');
-  showPass     = signal(false);
-  ready        = signal(false);
-  showRegister = signal(false);   // popup modal
-  regLoading   = signal(false);
-  regError     = signal('');
-  regSuccess   = signal(false);
-  showRegPass  = signal(false);
+  loading       = signal(false);
+  error         = signal('');
+  showPass      = signal(false);
+  ready         = signal(false);
+  showRegister  = signal(false);
+  regLoading    = signal(false);
+  regError      = signal('');
+  regSuccess    = signal(false);
+  showRegPass   = signal(false);
 
-  readonly roles: { value: Role; label: string; desc: string }[] = [
-    { value: 'DEV',    label: 'Developer',        desc: 'Création de projets & CI/CD' },
-    { value: 'DEVOPS', label: 'DevOps Engineer',  desc: 'Déploiement & infrastructure' },
-    { value: 'AUDITOR',label: 'Security Auditor', desc: 'Lecture seule – sécurité' },
+  // ALL 4 roles including ADMIN — visible by default
+  readonly roles: { value: Role; label: string; desc: string; icon: string; color: string }[] = [
+    {
+      value: 'ADMIN',
+      label: 'Administrateur',
+      desc: 'Tous les privilèges — gestion des utilisateurs, projets et déploiements',
+      icon: '👑',
+      color: '#7c3aed',
+    },
+    {
+      value: 'DEV',
+      label: 'Développeur',
+      desc: 'Création de projets, gestion du code & pipelines CI/CD',
+      icon: '💻',
+      color: '#2563eb',
+    },
+    {
+      value: 'DEVOPS',
+      label: 'DevOps Engineer',
+      desc: 'Déploiement, infrastructure & accès à tous les projets',
+      icon: '🚀',
+      color: '#059669',
+    },
+    {
+      value: 'AUDITOR',
+      label: 'Auditeur Sécurité',
+      desc: 'Lecture seule — consultation des logs et rapports de sécurité',
+      icon: '🔍',
+      color: '#d97706',
+    },
   ];
 
+  private _keyBuffer = '';
+  private _keyHandler?: (e: KeyboardEvent) => void;
+
   constructor(
-    private fb: FormBuilder,
-    private auth: AuthService,
+    private fb:     FormBuilder,
+    private auth:   AuthService,
     private router: Router,
   ) {
     this.form = this.fb.group({
@@ -56,13 +80,15 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    setTimeout(() => this.ready.set(true), 50);
-    if (this.auth.isLoggedIn()) {
-      this.router.navigate(['/dashboard']);
-    }
+    setTimeout(() => this.ready.set(true), 60);
+    if (this.auth.isLoggedIn()) this.router.navigate(['/dashboard']);
   }
 
-  get f() { return this.form.controls; }
+  ngOnDestroy(): void {
+    if (this._keyHandler) document.removeEventListener('keydown', this._keyHandler);
+  }
+
+  get f()  { return this.form.controls; }
   get rf() { return this.registerForm.controls; }
 
   togglePass():    void { this.showPass.update(v => !v); }
@@ -76,6 +102,10 @@ export class LoginComponent implements OnInit {
   }
   closeRegister(): void { this.showRegister.set(false); }
 
+  selectRole(role: Role): void {
+    this.registerForm.patchValue({ role });
+  }
+
   submit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading.set(true);
@@ -85,7 +115,7 @@ export class LoginComponent implements OnInit {
       error: (e) => {
         this.error.set(
           e.error?.message || e.error?.error ||
-          (e.status === 401 ? 'Identifiants incorrects' : 'Erreur serveur, réessayez')
+          (e.status === 401 ? 'Identifiants incorrects' : 'Erreur serveur — réessayez')
         );
         this.loading.set(false);
       },
@@ -101,13 +131,10 @@ export class LoginComponent implements OnInit {
       next: () => {
         this.regLoading.set(false);
         this.regSuccess.set(true);
-        setTimeout(() => {
-          this.closeRegister();
-          this.router.navigate(['/dashboard']);
-        }, 1500);
+        setTimeout(() => { this.closeRegister(); this.router.navigate(['/dashboard']); }, 1500);
       },
       error: (e) => {
-        this.regError.set(e?.error?.message || 'Erreur inscription');
+        this.regError.set(e?.error?.message || 'Erreur lors de l\'inscription');
         this.regLoading.set(false);
       },
     });

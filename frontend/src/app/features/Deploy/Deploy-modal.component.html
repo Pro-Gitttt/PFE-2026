@@ -1,30 +1,43 @@
-<div class="modal-backdrop" (click)="close()"></div>
+<!-- MODAL D'ABORD (z-index plus haut que le backdrop) -->
+<div class="modal" role="dialog" aria-modal="true">
 
-<div class="modal">
   <div class="modal-header">
     <div class="modal-title">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
       </svg>
-      Déploiement du projet
+      Déploiement — {{ project.name }}
     </div>
-    <button class="close-btn" (click)="close()">✕</button>
+    <button class="close-btn" (click)="close()" aria-label="Fermer">✕</button>
   </div>
 
+  <!-- SUCCESS -->
+  <div class="success-state" *ngIf="deploySuccess()">
+    <div class="success-icon">✓</div>
+    <h3>Déploiement lancé !</h3>
+    <p>Le projet <strong>{{ project.name }}</strong> est en cours de déploiement.</p>
+  </div>
+
+  <!-- FORM -->
   <div class="modal-body" *ngIf="!deploySuccess()">
 
+    <!-- Project info summary -->
     <div class="project-info">
       <div class="info-row">
-        <label>URL du repository *</label>
+        <label>Repository</label>
         <span class="info-val">{{ project.repositoryUrl }}</span>
       </div>
-      <div class="info-row">
-        <label>Description *</label>
-        <span class="info-val desc">{{ project.repositoryUrl }}</span>
-      </div>
-      <div class="info-row">
-        <label>Statut *</label>
-        <span class="badge-active">ACTIVE</span>
+      <div class="info-row" style="flex-direction:row; align-items:center; gap:16px;">
+        <div>
+          <label>Branche</label>
+          <span class="info-val">{{ project.branch || 'main' }}</span>
+        </div>
+        <div>
+          <label>Statut</label>
+          <span class="badge-active">ACTIVE</span>
+        </div>
       </div>
     </div>
 
@@ -46,16 +59,16 @@
 
         <div class="field">
           <label>Version *</label>
-          <input formControlName="version" placeholder="v1.0.0 ou 1.0.0" />
-          <span class="hint">Format: v1.0.0 ou 1.0.0</span>
+          <input formControlName="version" placeholder="v1.0.0"/>
+          <span class="hint">Format : v1.0.0</span>
           <span class="err" *ngIf="form.get('version')?.touched && form.get('version')?.invalid">
             Format invalide (ex: v1.0.0)
           </span>
         </div>
 
         <div class="field">
-          <label>Nom du Job Jenkins *</label>
-          <input formControlName="jenkinsJob" placeholder="Nom du job Jenkins" />
+          <label>Job Jenkins *</label>
+          <input formControlName="jenkinsJob" placeholder="nom-du-job-jenkins"/>
           <span class="err" *ngIf="form.get('jenkinsJob')?.touched && form.get('jenkinsJob')?.invalid">
             Requis
           </span>
@@ -64,12 +77,10 @@
         <div class="field">
           <label>Pipeline</label>
           <select formControlName="pipeline">
-            <option value="">-- Sélectionner un pipeline --</option>
+            <option value="">— Sélectionner —</option>
             <option *ngFor="let pl of pipelines()" [value]="pl.id">{{ pl.name }}</option>
           </select>
-          <span class="hint" *ngIf="pipelines().length === 0">
-            Aucun pipeline disponible pour ce projet
-          </span>
+          <span class="hint" *ngIf="pipelines().length === 0">Aucun pipeline lié à ce projet</span>
         </div>
 
       </div>
@@ -77,9 +88,9 @@
       <div class="alert-error" *ngIf="deployError()">{{ deployError() }}</div>
 
       <div class="modal-footer">
-        <button type="button" class="btn-cancel" (click)="close()">✕ Annuler</button>
+        <button type="button" class="btn-cancel" (click)="close()">Annuler</button>
         <button type="submit" class="btn-deploy" [disabled]="deploying()">
-          <span *ngIf="!deploying()">✓ Confirmer le déploiement</span>
+          <span *ngIf="!deploying()">🚀 Confirmer le déploiement</span>
           <span *ngIf="deploying()">Déploiement en cours...</span>
         </button>
       </div>
@@ -87,11 +98,7 @@
     </form>
   </div>
 
-  <!-- SUCCESS STATE -->
-  <div class="success-state" *ngIf="deploySuccess()">
-    <div class="success-icon">✓</div>
-    <h3>Déploiement lancé !</h3>
-    <p>Le projet <strong>{{ project.name }}</strong> est en cours de déploiement.</p>
-  </div>
-
 </div>
+
+<!-- BACKDROP APRÈS le modal (le modal est visuellement au-dessus grâce au z-index) -->
+<div class="modal-backdrop" (click)="close()"></div>
