@@ -40,6 +40,11 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf.disable())
+                // CORS is handled entirely by the API Gateway — disable it here
+                // to prevent the gateway and this service both adding the
+                // Access-Control-Allow-Origin header (which causes a duplicate
+                // header error in the browser).
+                .cors(cors -> cors.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
 
