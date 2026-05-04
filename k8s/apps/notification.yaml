@@ -5,9 +5,16 @@ metadata:
   namespace: apps
 spec:
   replicas: 1
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: notification-service
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
 
   template:
     metadata:
@@ -19,10 +26,12 @@ spec:
         prometheus.io/path: "/actuator/prometheus"
 
     spec:
+      terminationGracePeriodSeconds: 40
+
       containers:
         - name: notification-service
           image: 192.168.56.10:5000/notification-service:latest
-          imagePullPolicy: Always   # 🔥 IMPORTANT FIX
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 8087
@@ -67,45 +76,32 @@ spec:
                   name: mail-secret
                   key: MAIL_PASSWORD
 
-            # 🔥 FIX MEMORY CRASH (Exit 137)
+            # ✅ JVM FIX (VERY IMPORTANT for Exit 137)
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms256m -Xmx512m"
+              value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "100m"
+            limits:
+              memory: "768Mi"
+              cpu: "300m"
 
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: 8087
-            initialDelaySeconds: 90   # 🔥 increased
+            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 3
-            failureThreshold: 5
+            failureThreshold: 6
 
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: 8087
-            initialDelaySeconds: 150   # 🔥 important (Spring needs time)
+            initialDelaySeconds: 120
             periodSeconds: 20
             timeoutSeconds: 3
             failureThreshold: 5
-
-          resources:
-            requests:
-              memory: "512Mi"   # 🔥 FIX (was too low)
-              cpu: "100m"
-            limits:
-              memory: "1Gi"     # 🔥 FIX (prevents 137 crash)
-              cpu: "300m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: notification-service
-  namespace: apps
-spec:
-  type: ClusterIP
-  selector:
-    app: notification-service
-  ports:
-    - port: 8087
-      targetPort: 8087
