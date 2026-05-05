@@ -52,7 +52,7 @@ export interface CreatePipelineRequest {
 /** POST /api/executions/{pipelineId} */
 export interface TriggerExecutionRequest {
   commitHash: string;
-  userId: number;
+  userId: string;   // backend ExecutionRequest.userId is String
 }
 
 /** Deploy modal form value */

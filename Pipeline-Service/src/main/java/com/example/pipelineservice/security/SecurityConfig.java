@@ -52,6 +52,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
 
+                        // Jenkins callback — no JWT, called from CI server
+                        .requestMatchers(HttpMethod.PUT, "/api/executions/*/status").permitAll()
+
                         // ── AUDITOR: read-only, blocked from all writes ───────────────
                         // AUDITOR can GET but cannot POST/PUT/DELETE
                         .requestMatchers(HttpMethod.POST, "/api/pipeline/**").hasAnyRole("ADMIN", "DEVOPS", "DEV")

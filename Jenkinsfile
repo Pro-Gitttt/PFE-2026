@@ -2,29 +2,45 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'EXECUTION_ID', defaultValue: '1')
-        string(name: 'PROJECT_ID', defaultValue: '1')
+        string(name: 'EXECUTION_ID', defaultValue: '1',   description: 'Pipeline execution ID from the backend')
+        string(name: 'PROJECT_ID',   defaultValue: '1',   description: 'Project ID in the backend database')
+        string(name: 'COMMIT_HASH',  defaultValue: 'HEAD', description: 'Git commit hash to build')
     }
 
     environment {
-        JAVA_HOME_21         = "/usr/lib/jvm/java-21-openjdk-amd64"
-        JAVA_HOME_17         = "/usr/lib/jvm/java-17-openjdk-amd64"
-        REGISTRY             = "192.168.56.10:5000"
-        SONAR_URL            = "http://192.168.56.10:9000"
+        JAVA_HOME_21  = "/usr/lib/jvm/java-21-openjdk-amd64"
+        JAVA_HOME_17  = "/usr/lib/jvm/java-17-openjdk-amd64"
+
+        // Docker registry (Nexus on Jenkins VM)
+        REGISTRY      = "192.168.56.10:5000"
+
+        // SonarQube (Jenkins VM)
+        SONAR_URL     = "http://192.168.56.10:9000"
+
+        // Security service — NodePort on Kubernetes VM (30083)
+        // Direct call because Jenkins is outside the cluster
         SECURITY_SERVICE_URL = "http://192.168.56.20:30083/api/security/scan"
-        K8S_INFRA            = "/var/lib/jenkins/workspace/PFE-2026/k8s/infra"
-        K8S_APPS             = "/var/lib/jenkins/workspace/PFE-2026/k8s/apps"
-        K8S_MONITORING       = "/var/lib/jenkins/workspace/PFE-2026/k8s/monitoring"
+
+        // Backend API through Gateway NodePort (30080) on Kubernetes VM
+        // Used to update execution status after deploy
+        GATEWAY_URL   = "http://192.168.56.20:30080"
+
+        // k8s manifests location on Jenkins workspace
+        K8S_INFRA       = "/var/lib/jenkins/workspace/PFE-2026/k8s/infra"
+        K8S_APPS        = "/var/lib/jenkins/workspace/PFE-2026/k8s/apps"
+        K8S_MONITORING  = "/var/lib/jenkins/workspace/PFE-2026/k8s/monitoring"
     }
 
     stages {
 
+        // ─────────────────────────────────────────
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Build & Test') {
             steps {
                 withEnv(["JAVA_HOME=${JAVA_HOME_21}", "PATH+JAVA=${JAVA_HOME_21}/bin"]) {
@@ -36,6 +52,7 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────
         stage('SonarQube Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
@@ -51,14 +68,17 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Trivy Scan') {
             steps {
                 sh '''
                     trivy fs --format json -o trivy.json . || true
+                    test -s trivy.json || echo "{}" > trivy.json
                 '''
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Gitleaks Scan') {
             steps {
                 sh '''
@@ -66,37 +86,40 @@ pipeline {
                       --source . \
                       --report-format json \
                       --report-path gitleaks.json || true
+                    test -s gitleaks.json || echo "{}" > gitleaks.json
                 '''
             }
         }
 
+        // ─────────────────────────────────────────
+        // Send Trivy + Gitleaks reports to Security Service.
+        // Security Service scores the results and sets blocked=true if score < threshold.
+        // ─────────────────────────────────────────
         stage('Send Security Reports') {
             steps {
                 script {
-                    sh '''
-                        test -f trivy.json    || echo "{}" > trivy.json
-                        test -f gitleaks.json || echo "{}" > gitleaks.json
-                    '''
-
-                    echo "Sending to: ${SECURITY_SERVICE_URL}"
+                    echo "Sending security reports to: ${SECURITY_SERVICE_URL}"
+                    echo "  executionId = ${EXECUTION_ID}"
+                    echo "  projectId   = ${PROJECT_ID}"
 
                     def response = sh(script: """
-                        curl -s -X POST ${SECURITY_SERVICE_URL} \
-                          -F executionId=${EXECUTION_ID} \
-                          -F projectId=${PROJECT_ID} \
-                          -F trivy=@trivy.json \
-                          -F gitleaks=@gitleaks.json
+                        curl -sf -X POST ${SECURITY_SERVICE_URL} \
+                          -F "executionId=${EXECUTION_ID}" \
+                          -F "projectId=${PROJECT_ID}" \
+                          -F "trivy=@trivy.json" \
+                          -F "gitleaks=@gitleaks.json"
                     """, returnStdout: true).trim()
 
-                    echo "Response: ${response}"
+                    echo "Security Service Response: ${response}"
 
                     if (response.contains('"blocked":true')) {
-                        error("❌ SECURITY BLOCKED PIPELINE")
+                        error("❌ PIPELINE BLOCKED — Security score below threshold. Fix vulnerabilities and retry.")
                     }
                 }
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Docker Build') {
             steps {
                 withEnv(["JAVA_HOME=${JAVA_HOME_21}", "PATH+JAVA=${JAVA_HOME_21}/bin"]) {
@@ -112,6 +135,7 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Docker Push') {
             steps {
                 withCredentials([usernamePassword(
@@ -120,7 +144,7 @@ pipeline {
                     passwordVariable: 'NEXUS_PASS'
                 )]) {
                     sh """
-                        echo ${NEXUS_PASS} | docker login ${REGISTRY} \
+                        echo "${NEXUS_PASS}" | docker login ${REGISTRY} \
                           -u ${NEXUS_USER} --password-stdin
 
                         docker push ${REGISTRY}/eureka-server:latest
@@ -134,24 +158,44 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────
+        // Rolling restart so k8s pulls the new :latest images
+        // ─────────────────────────────────────────
         stage('Deploy to Kubernetes') {
             steps {
                 sh """
+                    # Apply infra first
                     kubectl apply -f ${K8S_INFRA}/mysql.yaml
                     kubectl apply -f ${K8S_INFRA}/eureka.yaml
                     kubectl apply -f ${K8S_INFRA}/gateway.yaml
 
+                    # Apply app services
                     kubectl apply -f ${K8S_APPS}/auth.yaml
                     kubectl apply -f ${K8S_APPS}/pipeline.yaml
                     kubectl apply -f ${K8S_APPS}/security.yaml
                     kubectl apply -f ${K8S_APPS}/notification.yaml
 
+                    # Monitoring
                     kubectl apply -f ${K8S_MONITORING}/prometheus.yaml
                     kubectl apply -f ${K8S_MONITORING}/grafana.yaml
+
+                    # Force rollout to pick up new :latest images
+                    kubectl rollout restart deployment/eureka-server    -n infra
+                    kubectl rollout restart deployment/api-gateway       -n infra
+                    kubectl rollout restart deployment/auth-service      -n apps
+                    kubectl rollout restart deployment/pipeline-service  -n apps
+                    kubectl rollout restart deployment/security-service  -n apps
+                    kubectl rollout restart deployment/notification-service -n apps
+
+                    # Wait for rollouts to complete
+                    kubectl rollout status deployment/api-gateway       -n infra --timeout=120s
+                    kubectl rollout status deployment/pipeline-service  -n apps  --timeout=120s
+                    kubectl rollout status deployment/security-service  -n apps  --timeout=120s
                 """
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Verify Deployment') {
             steps {
                 sh '''
@@ -178,9 +222,25 @@ pipeline {
         }
         success {
             echo "✅ PIPELINE SUCCESS — All services deployed!"
+            script {
+                // Notify backend that execution succeeded
+                sh """
+                    curl -sf -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
+                      -H 'Content-Type: application/json' \
+                      -d '{"status":"SUCCESS"}' || true
+                """
+            }
         }
         failure {
             echo "❌ PIPELINE FAILED"
+            script {
+                // Notify backend that execution failed
+                sh """
+                    curl -sf -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
+                      -H 'Content-Type: application/json' \
+                      -d '{"status":"FAILED"}' || true
+                """
+            }
         }
     }
 }

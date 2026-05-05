@@ -38,7 +38,8 @@ public class JenkinsClient {
 
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("EXECUTION_ID", execution.getId().toString());
-        body.add("COMMIT_HASH", execution.getCommitHash());
+        body.add("PROJECT_ID",   execution.getPipeline().getProject().getId().toString());
+        body.add("COMMIT_HASH",  execution.getCommitHash());
 
         ResponseEntity<String> response = restTemplate.exchange(
                 url,

@@ -243,7 +243,7 @@
             <span class="notif-type">{{ eventLabel(n.eventType) }}</span>
             <!-- FIX: use non-null assertion after *ngIf guard, and nullish coalescing for length -->
             <span class="notif-msg" *ngIf="n.message">
-              {{ n.message! | slice:0:50 }}{{ (n.message?.length ?? 0) > 50 ? '…' : '' }}
+              {{ n.message! | slice:0:50 }}{{ (n.message.length ?? 0) > 50 ? '…' : '' }}
             </span>
           </div>
           <div class="notif-right">

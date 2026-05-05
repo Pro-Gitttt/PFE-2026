@@ -1,7 +1,9 @@
 package com.example.pipelineservice.controller;
 
 import com.example.pipelineservice.client.dto.request.ExecutionRequest;
+import com.example.pipelineservice.client.dto.request.StatusUpdateRequest;
 import com.example.pipelineservice.client.dto.response.ExecutionResponse;
+import com.example.pipelineservice.entities.PipelineStatus;
 import com.example.pipelineservice.service.ExecutionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -63,5 +65,18 @@ public class ExecutionController {
     @GetMapping("/pipeline/{pipelineId}")
     public ResponseEntity<List<ExecutionResponse>> getByPipeline(@PathVariable Long pipelineId) {
         return ResponseEntity.ok(executionService.getExecutionsByPipeline(pipelineId));
+    }
+
+    /**
+     * Called by Jenkins post{} block to report final build status (SUCCESS / FAILED).
+     * No auth required — Jenkins calls this from inside the cluster or via NodePort.
+     * We use a dedicated internal endpoint to avoid requiring a JWT token from Jenkins.
+     */
+    @PutMapping("/{executionId}/status")
+    public ResponseEntity<Void> updateStatus(
+            @PathVariable Long executionId,
+            @RequestBody StatusUpdateRequest request) {
+        executionService.updateStatus(executionId, request.getStatus());
+        return ResponseEntity.ok().build();
     }
 }

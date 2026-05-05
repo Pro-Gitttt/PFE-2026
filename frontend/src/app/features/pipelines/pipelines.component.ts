@@ -86,7 +86,7 @@ export class PipelinesComponent implements OnInit {
       this.selectedPipeline()!.id,
       {
         commitHash: this.commitCtrl.value!,
-        userId: 1 // TODO: replace with real user
+        userId: 'admin' // TODO: replace with real user from AuthService
       }
     ).subscribe({
       next: () => {

@@ -7,7 +7,7 @@ import { NotificationItem } from '../models/notification.model';
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
 
-  private readonly base = '/api/notifications';
+  private readonly base = `${environment.apiNotification}`;
 
   constructor(private http: HttpClient) {}
 

@@ -1,19 +1,15 @@
 import {
   Component, Input, Output, EventEmitter,
-  signal, inject, OnInit, OnDestroy
+  signal, inject, OnInit, OnDestroy, computed
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Project } from '../../core/models/project.model';
 import { PipelineService } from '../../core/services/pipeline.service';
-import { Pipeline, PipelineExecution, PipelineStatus } from '../../core/models/pipeline.model';
+import { AuthService } from '../../core/services/auth.service';
+import { Pipeline, PipelineExecution } from '../../core/models/pipeline.model';
 
-type DeployStep = 'form' | 'progress' | 'success' | 'error';
-
-interface StageDisplay {
-  name: string;
-  status: 'waiting' | 'running' | 'success' | 'failed';
-}
+type DeployStep = 'config' | 'deploying' | 'done';
 
 @Component({
   selector: 'app-deploy-modal',
@@ -27,213 +23,162 @@ export class DeployModalComponent implements OnInit, OnDestroy {
   @Input() project!: Project;
   @Output() closed = new EventEmitter<void>();
 
-  private fb = inject(FormBuilder);
+  private fb          = inject(FormBuilder);
   private pipelineSvc = inject(PipelineService);
+  private authSvc     = inject(AuthService);
 
-  step          = signal<DeployStep>('form');
-  pipelines     = signal<Pipeline[]>([]);
-  deploying     = signal(false);
-  deployError   = signal('');
-  execution     = signal<PipelineExecution | null>(null);
-  executionId   = signal<number | null>(null);
-  elapsedSeconds = signal(0);
-  stages        = signal<StageDisplay[]>([]);
-  currentStageIdx = signal(0);
-  logLines      = signal<string[]>([]);
+  // ── Signals ───────────────────────────────────────────────────────────────
+  step      = signal<DeployStep>('config');
+  pipelines = signal<Pipeline[]>([]);
+  loading   = signal(false);
+  deploying = signal(false);
+  error     = signal('');
+  execution = signal<PipelineExecution | null>(null);
+
+  // For inline pipeline creation when project has none
+  showCreatePipeline = signal(false);
+  creatingPipeline   = signal(false);
 
   private pollTimer: ReturnType<typeof setInterval> | null = null;
-  private tickTimer: ReturnType<typeof setInterval> | null = null;
-  private startEpoch = 0;
+  private _result: 'success' | 'failed' | null = null;
 
-  readonly environments = [
-    { value: 'DEV',     label: 'Development (DEV)' },
-    { value: 'STAGING', label: 'Staging (STG)' },
-    { value: 'PROD',    label: 'Production (PROD)' },
-  ];
+  readonly environments = ['DEV', 'STAGING', 'PROD'];
 
+  // Main deploy form
   form: FormGroup = this.fb.group({
-    environment: ['DEV', Validators.required],
-    version:     ['v1.0.0', [Validators.required, Validators.pattern(/^v\d+\.\d+\.\d+$/)]],
-    jenkinsJob:  ['', Validators.required],
-    pipeline:    ['', Validators.required],
+    environment:    ['DEV', Validators.required],
+    commitHash:     ['HEAD', [Validators.required, Validators.minLength(3)]],
+    pipelineId:     ['', Validators.required],
   });
 
-  ngOnInit(): void {
+  // Pipeline creation sub-form
+  pipelineForm: FormGroup = this.fb.group({
+    pipelineName:    ['devsecops-pipeline', Validators.required],
+    jenkinsJobName:  ['devsecops-pipeline', Validators.required],
+  });
+
+  // ── Computed ──────────────────────────────────────────────────────────────
+  get repositoryUrl(): string { return this.project?.repositoryUrl ?? ''; }
+  get description(): string   { return this.project?.description   ?? ''; }
+  get isSuccess(): boolean    { return this._result === 'success'; }
+  get isFailed(): boolean     { return this._result === 'failed'; }
+  get statusLabel(): string {
+    if (this.isSuccess) return 'Déploiement réussi !';
+    if (this.isFailed)  return 'Déploiement échoué';
+    return '';
+  }
+
+  selectedPipeline = computed(() => {
+    const id = +this.form.value.pipelineId;
+    return this.pipelines().find(p => p.id === id) ?? null;
+  });
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  ngOnInit(): void { this.loadPipelines(); }
+  ngOnDestroy(): void { this.stopPolling(); }
+
+  loadPipelines(): void {
+    this.loading.set(true);
+    this.error.set('');
     this.pipelineSvc.getByProject(this.project.id).subscribe({
       next: data => {
         this.pipelines.set(data);
         if (data.length > 0) {
-          this.form.patchValue({
-            pipeline:   data[0].id,
-            jenkinsJob: data[0].jenkinsJobName ?? '',
-          });
+          this.form.patchValue({ pipelineId: data[0].id });
+        } else {
+          // No pipeline yet — prompt user to create one
+          this.showCreatePipeline.set(true);
         }
+        this.loading.set(false);
+      },
+      error: () => {
+        this.error.set('Impossible de charger les pipelines');
+        this.loading.set(false);
       },
     });
   }
 
-  ngOnDestroy(): void { this.stopTimers(); }
+  // ── Create pipeline inline ────────────────────────────────────────────────
+  createPipeline(): void {
+    if (this.pipelineForm.invalid) { this.pipelineForm.markAllAsTouched(); return; }
+    this.creatingPipeline.set(true);
+    this.error.set('');
 
-  close(): void { this.stopTimers(); this.closed.emit(); }
+    const req = {
+      name:           this.pipelineForm.value.pipelineName.trim(),
+      jenkinsJobName: this.pipelineForm.value.jenkinsJobName.trim(),
+    };
 
-  onPipelineChange(event: Event): void {
-    const id = +(event.target as HTMLSelectElement).value;
-    const pl = this.pipelines().find(p => p.id === id);
-    if (pl) this.form.patchValue({ jenkinsJob: pl.jenkinsJobName ?? '' });
+    this.pipelineSvc.create(this.project.id, req).subscribe({
+      next: pipeline => {
+        this.pipelines.update(list => [...list, pipeline]);
+        this.form.patchValue({ pipelineId: pipeline.id });
+        this.showCreatePipeline.set(false);
+        this.creatingPipeline.set(false);
+      },
+      error: e => {
+        this.error.set(e?.error?.message ?? 'Erreur création pipeline');
+        this.creatingPipeline.set(false);
+      },
+    });
   }
 
-  deploy(): void {
+  // ── Deploy ────────────────────────────────────────────────────────────────
+  close(): void { this.stopPolling(); this.closed.emit(); }
+
+  confirmDeploy(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+
+    const pipelineId = +this.form.value.pipelineId;
+    if (!pipelineId) {
+      this.error.set('Veuillez sélectionner un pipeline');
+      return;
+    }
+
+    this.error.set('');
     this.deploying.set(true);
-    this.deployError.set('');
-    this.initStages();
-    this.step.set('progress');
-    this.startEpoch = Date.now();
-    this.startTick();
+    this.step.set('deploying');
 
-    const pipelineId = +this.form.value.pipeline;
-    const version    = this.form.value.version as string;
+    const commitHash = this.form.value.commitHash as string;
+    const userId     = this.authSvc.username || 'admin';
 
-    this.pipelineSvc.trigger(pipelineId, { commitHash: version, userId: 0 }).subscribe({
-      next: (exec) => {
+    this.pipelineSvc.trigger(pipelineId, { commitHash, userId }).subscribe({
+      next: exec => {
         this.execution.set(exec);
-        this.executionId.set(exec.id);
         this.deploying.set(false);
-        this.appendLog(`✅ Pipeline déclenché — Execution #${exec.id}`);
-        this.appendLog(`⏳ Statut: ${exec.status}`);
         this.startPolling(exec.id);
       },
-      error: (e) => {
-        this.stopTimers();
+      error: e => {
         this.deploying.set(false);
-        this.deployError.set(e?.error?.message ?? 'Erreur lors du déploiement');
-        this.step.set('error');
+        this._result = 'failed';
+        this.error.set(e?.error?.message ?? 'Erreur lors du déploiement');
+        this.step.set('done');
       },
     });
   }
 
+  // ── Polling ───────────────────────────────────────────────────────────────
   private startPolling(execId: number): void {
     this.pollTimer = setInterval(() => {
       this.pipelineSvc.getExecution(execId).subscribe({
-        next: (exec) => {
+        next: exec => {
           this.execution.set(exec);
-          this.syncStages(exec);
-          this.appendLog(`🔄 Statut: ${exec.status}`);
           if (exec.status === 'SUCCESS') {
-            this.stopTimers();
-            this.markAllStages('success');
-            this.appendLog('🎉 Build terminé avec succès!');
-            this.appendLog('📦 Artifact ZIP disponible sur Jenkins');
-            setTimeout(() => this.step.set('success'), 600);
+            this.stopPolling();
+            this._result = 'success';
+            this.step.set('done');
           } else if (exec.status === 'FAILED' || exec.status === 'CANCELLED') {
-            this.stopTimers();
-            this.markAllPendingFailed();
-            this.appendLog(`❌ Build échoué: ${exec.status}`);
-            this.deployError.set(`Le déploiement a échoué (${exec.status})`);
-            this.step.set('error');
-          } else if (exec.status === 'RUNNING') {
-            this.advanceStages();
+            this.stopPolling();
+            this._result = 'failed';
+            this.error.set(`Le déploiement a échoué (${exec.status})`);
+            this.step.set('done');
           }
         },
-        error: () => this.appendLog('⚠️ Erreur lors du polling du statut'),
       });
     }, 4000);
   }
 
-  private readonly defaultStageNames = [
-    'Checkout du code', 'Build Maven', 'Tests Unitaires',
-    'Analyse Sécurité', 'Package ZIP', 'Déploiement Jenkins',
-  ];
-
-  private initStages(): void {
-    this.stages.set(this.defaultStageNames.map(name => ({ name, status: 'waiting' as const })));
-    this.currentStageIdx.set(0);
-  }
-
-  private syncStages(exec: PipelineExecution): void {
-    if (exec.stages && exec.stages.length > 0) {
-      this.stages.set(exec.stages.map(s => ({
-        name:   s.stageName,
-        status: this.mapStatus(s.status),
-      })));
-    }
-  }
-
-  private advanceStages(): void {
-    const idx = this.currentStageIdx();
-    if (idx < this.stages().length) {
-      this.stages.update(list => list.map((s, i) => {
-        if (i < idx)   return { ...s, status: 'success' as const };
-        if (i === idx) return { ...s, status: 'running' as const };
-        return s;
-      }));
-      this.currentStageIdx.update(v => Math.min(v + 1, this.stages().length - 1));
-    }
-  }
-
-  private markAllStages(status: 'success' | 'failed'): void {
-    this.stages.update(list => list.map(s => ({ ...s, status })));
-  }
-
-  private markAllPendingFailed(): void {
-    this.stages.update(list =>
-      list.map(s =>
-        s.status === 'waiting' || s.status === 'running'
-          ? { ...s, status: 'failed' as const }
-          : s
-      )
-    );
-  }
-
-  private mapStatus(s: PipelineStatus): StageDisplay['status'] {
-    if (s === 'SUCCESS') return 'success';
-    if (s === 'FAILED')  return 'failed';
-    if (s === 'RUNNING') return 'running';
-    return 'waiting';
-  }
-
-  private appendLog(msg: string): void {
-    const ts = new Date().toLocaleTimeString('fr-FR');
-    this.logLines.update(l => [...l.slice(-49), `[${ts}] ${msg}`]);
-  }
-
-  private startTick(): void {
-    this.elapsedSeconds.set(0);
-    this.tickTimer = setInterval(() => {
-      this.elapsedSeconds.set(Math.floor((Date.now() - this.startEpoch) / 1000));
-    }, 1000);
-  }
-
-  private stopTimers(): void {
+  private stopPolling(): void {
     if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
-    if (this.tickTimer) { clearInterval(this.tickTimer); this.tickTimer = null; }
-  }
-
-  get elapsedFormatted(): string {
-    const s = this.elapsedSeconds();
-    const m = Math.floor(s / 60);
-    return m > 0 ? `${m}m ${s % 60}s` : `${s}s`;
-  }
-
-  get progressPercent(): number {
-    const total   = this.stages().length || 1;
-    const done    = this.stages().filter(s => s.status === 'success').length;
-    const running = this.stages().some(s => s.status === 'running') ? 0.5 : 0;
-    return Math.round(((done + running) / total) * 100);
-  }
-
-  get jenkinsBuildUrl(): string {
-    const exec = this.execution();
-    return (exec as any)?.jenkinsBuildUrl ?? '';
-  }
-
-  retry(): void {
-    this.stopTimers();
-    this.deployError.set('');
-    this.logLines.set([]);
-    this.execution.set(null);
-    this.executionId.set(null);
-    this.elapsedSeconds.set(0);
-    this.step.set('form');
   }
 }
