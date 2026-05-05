@@ -31,8 +31,16 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
 
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ allow auth endpoints
-                        .requestMatchers("/api/auth/**").permitAll()
+                        // ✅ IMPORTANT: Admin endpoints must be authenticated (JWT required)
+                        .requestMatchers("/api/auth/admin/**").authenticated()
+
+                        // ✅ allow public auth endpoints (login, register, refresh)
+                        .requestMatchers(
+                            "/api/auth/login",
+                            "/api/auth/register",
+                            "/api/auth/refresh",
+                            "/api/auth/logout"
+                        ).permitAll()
 
                         // ✅ VERY IMPORTANT (fix Docker healthcheck)
                         .requestMatchers("/actuator/**").permitAll()

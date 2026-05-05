@@ -167,7 +167,7 @@
               <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f1f5f9" stroke-width="3"/>
               <circle cx="18" cy="18" r="15.9" fill="none"
                       stroke="#16a34a" stroke-width="3"
-                      stroke-dasharray="{{ successRate() }} {{ 100 - successRate() }}"
+                      [attr.stroke-dasharray]="successRate() + ' ' + (100 - successRate())"
                       stroke-dashoffset="25"
                       stroke-linecap="round"/>
             </svg>
@@ -241,7 +241,10 @@
           </div>
           <div class="notif-info">
             <span class="notif-type">{{ eventLabel(n.eventType) }}</span>
-            <span class="notif-msg" *ngIf="n.message">{{ n.message | slice:0:50 }}{{ n.message?.length > 50 ? '…' : '' }}</span>
+            <!-- FIX: use non-null assertion after *ngIf guard, and nullish coalescing for length -->
+            <span class="notif-msg" *ngIf="n.message">
+              {{ n.message! | slice:0:50 }}{{ (n.message?.length ?? 0) > 50 ? '…' : '' }}
+            </span>
           </div>
           <div class="notif-right">
             <span class="notif-date">{{ n.createdAt | date:'dd/MM HH:mm' }}</span>

@@ -2,7 +2,6 @@ import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { forkJoin, interval, Subscription } from 'rxjs';
-import { switchMap, startWith } from 'rxjs/operators';
 
 import { ProjectService }      from '../../core/services/project.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -36,19 +35,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const n = this.notifications();
     const p = this.projects();
     return {
-      projects:   p.length,
-      active:     p.filter(x => !x.status || x.status === 'ACTIVE').length,
-      succeeded:  n.filter(x => x.eventType === 'PIPELINE_SUCCESS').length,
-      failed:     n.filter(x => x.eventType === 'PIPELINE_FAILED').length,
-      blocked:    n.filter(x => x.eventType === 'SECURITY_BLOCKED').length,
-      warnings:   n.filter(x => x.eventType === 'SECURITY_WARNING').length,
+      projects:    p.length,
+      active:      p.filter(x => !x.status || x.status === 'ACTIVE').length,
+      succeeded:   n.filter(x => x.eventType === 'PIPELINE_SUCCESS').length,
+      failed:      n.filter(x => x.eventType === 'PIPELINE_FAILED').length,
+      blocked:     n.filter(x => x.eventType === 'SECURITY_BLOCKED').length,
+      warnings:    n.filter(x => x.eventType === 'SECURITY_WARNING').length,
       total_notif: n.length,
     };
   });
 
-  readonly successRate = computed(() => {
+  readonly successRate = computed((): number => {
     const k = this.kpis();
     const total = k.succeeded + k.failed;
+    // FIX: explicit return type `: number` guarantees the signal is never undefined
     return total === 0 ? 100 : Math.round((k.succeeded / total) * 100);
   });
 
@@ -70,7 +70,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const label = d.toLocaleDateString('fr-FR', { weekday: 'short' });
+      const label  = d.toLocaleDateString('fr-FR', { weekday: 'short' });
       const dayStr = d.toISOString().slice(0, 10);
       const dayNotifs = this.notifications().filter(n =>
         n.createdAt && n.createdAt.startsWith(dayStr)
@@ -86,14 +86,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return days;
   });
 
-  readonly maxDayCount = computed(() => {
+  readonly maxDayCount = computed((): number => {
     const days = this.activityDays();
     return Math.max(1, ...days.map(d => d.success + d.failed + d.security));
   });
 
   // Pipeline status distribution
   readonly pipelineStats = computed(() => {
-    const n = this.notifications();
+    const n        = this.notifications();
     const success  = n.filter(x => x.eventType === 'PIPELINE_SUCCESS').length;
     const failed   = n.filter(x => x.eventType === 'PIPELINE_FAILED').length;
     const security = n.filter(x => x.eventType?.startsWith('SECURITY')).length;

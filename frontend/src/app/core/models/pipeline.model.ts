@@ -37,6 +37,9 @@ export interface PipelineExecution {
   startTime: string;
   endTime: string;
   triggeredBy: string;
+  jenkinsBuildNumber?: number;
+  jenkinsBuildUrl?: string;
+  jenkinsQueueId?: number;
   stages: StageExecution[];
 }
 
