@@ -23,6 +23,12 @@ export const SHELL_ROUTES: Routes = [
     loadComponent: () => import('../features/security/security.component').then(m => m.SecurityComponent),
   },
   {
+    path: 'monitoring',
+    loadComponent: () => import('../features/monitoring/monitoring.component').then(m => m.MonitoringComponent),
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'DEVOPS'] },
+  },
+  {
     path: 'notifications',
     loadComponent: () => import('../features/notifications/notifications.component').then(m => m.NotificationsComponent),
   },

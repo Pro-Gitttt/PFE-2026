@@ -42,6 +42,7 @@ export class ShellComponent {
     { path: '/projects',      label: 'Projets',         icon: 'folder',   roles: ['ADMIN', 'DEV', 'DEVOPS'] },
     { path: '/pipelines',     label: 'Pipelines',       icon: 'activity', roles: ['ADMIN', 'DEV', 'DEVOPS'] },
     { path: '/security',      label: 'Sécurité',        icon: 'shield' },
+    { path: '/monitoring',    label: 'Monitoring',      icon: 'monitor',  roles: ['ADMIN', 'DEVOPS'] },
     { path: '/notifications', label: 'Notifications',   icon: 'bell' },
     { path: '/admin',         label: 'Administration',  icon: 'users',    roles: ['ADMIN'] },
   ];
@@ -65,6 +66,7 @@ export class ShellComponent {
         projects:      'Projets',
         pipelines:     'Pipelines',
         security:      'Sécurité',
+        monitoring:    'Monitoring',
         notifications: 'Notifications',
         admin:         'Administration',
       } as Record<string, string>)[seg] ?? 'DevSecOps STB';
@@ -108,6 +110,11 @@ export class ShellComponent {
         <circle cx="9" cy="7" r="4"/>
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
         <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>`,
+      monitor: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
       </svg>`,
     };
     return this.sanitizer.bypassSecurityTrustHtml(icons[name] || '');
