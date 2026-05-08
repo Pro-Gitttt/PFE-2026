@@ -3,59 +3,75 @@ package com.example.securityservice.service;
 import com.example.securityservice.entities.ScanType;
 import com.example.securityservice.entities.SeverityLevel;
 import com.example.securityservice.entities.Vulnerability;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class TrivyParser {
 
-    public List<Vulnerability> parse(MultipartFile file) {
+    private final ObjectMapper mapper = new ObjectMapper();
 
+    public List<Vulnerability> parse(MultipartFile file) {
         List<Vulnerability> list = new ArrayList<>();
 
+        if (file == null || file.isEmpty()) return list;
+
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            Map json = mapper.readValue(file.getInputStream(), Map.class);
+            byte[] bytes   = file.getBytes();
+            String content = new String(bytes).trim();
 
-            List<Map> results = (List<Map>) json.get("Results");
+            if (content.isEmpty() || content.equals("null")) return list;
 
-            if (results == null) return list;
+            JsonNode root = mapper.readTree(content);
 
-            for (Map result : results) {
-                List<Map> vulns = (List<Map>) result.get("Vulnerabilities");
+            // Handle both {"Results":[...]} and empty {} or []
+            JsonNode results = root.path("Results");
+            if (results.isMissingNode() || !results.isArray()) return list;
 
-                if (vulns == null) continue;
+            for (JsonNode result : results) {
+                JsonNode vulns = result.path("Vulnerabilities");
+                if (vulns.isMissingNode() || !vulns.isArray()) continue;
 
-                for (Map v : vulns) {
+                String target = result.path("Target").asText("unknown");
+
+                for (JsonNode v : vulns) {
+                    String severityStr = v.path("Severity").asText("LOW");
+                    String vulnId      = v.path("VulnerabilityID").asText("");
+                    String title       = v.path("Title").asText(vulnId);
+                    String pkgName     = v.path("PkgName").asText("");
+
                     list.add(
-                            Vulnerability.builder()
-                                    .type(ScanType.SCA)
-                                    .severity(mapSeverity((String) v.get("Severity")))
-                                    .description((String) v.get("Title"))
-                                    .cve((String) v.get("VulnerabilityID"))
-                                    .build()
+                        Vulnerability.builder()
+                            .type(ScanType.SCA)
+                            .severity(mapSeverity(severityStr))
+                            .description(title)
+                            .filePath(target + (pkgName.isEmpty() ? "" : " → " + pkgName))
+                            .cve(vulnId)
+                            .build()
                     );
                 }
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("[TrivyParser] Parse error (treating as clean): " + e.getMessage());
         }
 
+        System.out.printf("[TrivyParser] Parsed %d vulnerabilities%n", list.size());
         return list;
     }
 
     private SeverityLevel mapSeverity(String s) {
-        return switch (s) {
+        if (s == null) return SeverityLevel.LOW;
+        return switch (s.toUpperCase()) {
             case "CRITICAL" -> SeverityLevel.CRITICAL;
-            case "HIGH" -> SeverityLevel.HIGH;
-            case "MEDIUM" -> SeverityLevel.MEDIUM;
-            default -> SeverityLevel.LOW;
+            case "HIGH"     -> SeverityLevel.HIGH;
+            case "MEDIUM"   -> SeverityLevel.MEDIUM;
+            default         -> SeverityLevel.LOW;
         };
     }
 }
