@@ -9,8 +9,9 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
- * Global CORS configuration for the API Gateway.
- * Allows the Angular frontend served from any origin (dev + prod K8s NodePort).
+ * Single source of truth for CORS in the gateway.
+ * NOTE: Do NOT add globalcors in application.properties — that creates duplicate headers.
+ * NOTE: Do NOT add @CrossOrigin on any controller behind this gateway.
  */
 @Configuration
 public class CorsConfig {
@@ -20,9 +21,10 @@ public class CorsConfig {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow both local dev and the deployed K8s node IP — use pattern to support any port
+        // Specific origins only — wildcard + allowCredentials=true is rejected by browsers
         config.addAllowedOriginPattern("http://localhost:*");
         config.addAllowedOriginPattern("http://192.168.56.*:*");
+        config.addAllowedOriginPattern("http://192.168.40.*:*");
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
