@@ -12,6 +12,8 @@ export interface ServiceHealth {
   name:    string;
   up:      boolean;
   uptime:  number; // seconds
+=======
+>>>>>>> 558a48e ( update the project)
   value:  [number, string];
 }
 
@@ -26,6 +28,7 @@ export interface MetricPoint {
 }
 
 export interface MonitoringSnapshot {
+
   servicesUp:       number;
   servicesTotal:    number;
   services:         ServiceHealth[];
@@ -35,6 +38,8 @@ export interface MonitoringSnapshot {
   jvmThreads:       MetricPoint[];   // JVM live threads per service
   cpuUsage:         MetricPoint[];   // process CPU per service
   avgResponseMs:    MetricPoint[];   // avg HTTP response time ms
+
+
   servicesUp:    number;
   servicesTotal: number;
   services:      ServiceHealth[];
@@ -111,6 +116,7 @@ export class PrometheusService {
     }).pipe(
       map(r => r?.data?.result ?? []),
       catchError(() => of([]))
+
   snapshot(): Observable<MonitoringSnapshot> {
     // Use simple PromQL without job filter — works with any Spring Boot actuator scrape
     return forkJoin({
@@ -176,10 +182,12 @@ export class PrometheusService {
   }
 
   private toPoints(results: PrometheusResult[]): MetricPoint[] {
+
     return results.map(r => ({
       service: r.metric['app'] ?? r.metric['instance'] ?? 'unknown',
       value:   parseFloat(r.value[1]) || 0,
     }));
+
     return results
       .map(r => ({
         service: r.metric['app'] ?? r.metric['instance'] ?? 'unknown',
