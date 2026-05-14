@@ -135,7 +135,7 @@
     <div class="section-card">
       <div class="section-header">
         <h3 class="section-title">État des microservices</h3>
-        <span class="section-badge">up{} · Prometheus</span>
+        <span class="section-badge">up{{ '{' }}{{ '}' }} · Prometheus</span>
       </div>
 
       <ng-container *ngIf="snapshot()?.services?.length; else noPromServices">
@@ -192,9 +192,8 @@
           <div class="spark-label">Historique RPS (dernières mesures)</div>
           <svg viewBox="0 0 100 40" width="100%" height="40" preserveAspectRatio="none" class="spark-svg">
             <polyline [attr.points]="rpsSparkline" fill="none" stroke="#3b82f6" stroke-width="1.5"/>
-            <polyline [attr.points]="rpsSparkline"
-                      fill="rgba(59,130,246,0.1)" stroke="none"
-                      [attr.points]="rpsSparkline + ' 100,40 0,40'"/>
+            <polyline [attr.points]="rpsSparkline + ' 100,40 0,40'"
+                      fill="rgba(59,130,246,0.1)" stroke="none"/>
           </svg>
         </div>
       </div>
@@ -291,33 +290,56 @@
       </div>
       <div class="biz-grid">
         <div class="biz-stat">
-          <div class="biz-icon biz-success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="biz-icon biz-success">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
           <div class="biz-val">{{ successCount() }}</div>
           <div class="biz-label">Pipelines réussis</div>
         </div>
         <div class="biz-stat">
-          <div class="biz-icon biz-failed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+          <div class="biz-icon biz-failed">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </div>
           <div class="biz-val">{{ failedCount() }}</div>
           <div class="biz-label">Pipelines échoués</div>
         </div>
         <div class="biz-stat">
-          <div class="biz-icon biz-blocked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div class="biz-icon biz-blocked">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
           <div class="biz-val">{{ blockedCount() }}</div>
           <div class="biz-label">Bloqués sécurité</div>
         </div>
         <div class="biz-stat">
-          <div class="biz-icon biz-rate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div>
+          <div class="biz-icon biz-rate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+            </svg>
+          </div>
           <div class="biz-val">{{ successRate() }}<span class="biz-unit">%</span></div>
           <div class="biz-label">Taux de succès</div>
         </div>
         <div class="biz-stat">
-          <div class="biz-icon biz-projects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+          <div class="biz-icon biz-projects">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
           <div class="biz-val">{{ totalProjects() }}</div>
           <div class="biz-label">Projets actifs</div>
         </div>
         <div class="biz-stat">
           <div class="biz-icon" [class.biz-health-ok]="healthPercent()===100" [class.biz-health-warn]="healthPercent()<100">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
           </div>
           <div class="biz-val">{{ healthPercent() }}<span class="biz-unit">%</span></div>
           <div class="biz-label">Disponibilité</div>
@@ -329,23 +351,47 @@
     <div class="section-card">
       <div class="section-header"><h3 class="section-title">Accès rapide aux outils</h3></div>
       <div class="links-grid">
-        <a [href]="grafanaUrl"               target="_blank" class="tool-link tl-grafana">
-          <span class="tl-icon">📊</span><div class="tl-info"><div class="tl-name">Grafana</div><div class="tl-url">:32000 · admin/Admin2024!</div></div>
+        <a [href]="grafanaUrl" target="_blank" class="tool-link tl-grafana">
+          <span class="tl-icon">📊</span>
+          <div class="tl-info">
+            <div class="tl-name">Grafana</div>
+            <div class="tl-url">:32000 · admin/Admin2024{{ '!' }}</div>
+          </div>
         </a>
-        <a [href]="prometheusUrl"            target="_blank" class="tool-link tl-prom">
-          <span class="tl-icon">🔥</span><div class="tl-info"><div class="tl-name">Prometheus</div><div class="tl-url">:32090 · scraping 15s</div></div>
+        <a [href]="prometheusUrl" target="_blank" class="tool-link tl-prom">
+          <span class="tl-icon">🔥</span>
+          <div class="tl-info">
+            <div class="tl-name">Prometheus</div>
+            <div class="tl-url">:32090 · scraping 15s</div>
+          </div>
         </a>
-        <a href="http://192.168.56.10:9000"  target="_blank" class="tool-link tl-sonar">
-          <span class="tl-icon">🔍</span><div class="tl-info"><div class="tl-name">SonarQube</div><div class="tl-url">VM1:9000</div></div>
+        <a href="http://192.168.56.10:9000" target="_blank" class="tool-link tl-sonar">
+          <span class="tl-icon">🔍</span>
+          <div class="tl-info">
+            <div class="tl-name">SonarQube</div>
+            <div class="tl-url">VM1:9000</div>
+          </div>
         </a>
-        <a href="http://192.168.56.10:8080"  target="_blank" class="tool-link tl-jenkins">
-          <span class="tl-icon">⚙️</span><div class="tl-info"><div class="tl-name">Jenkins</div><div class="tl-url">VM1:8080</div></div>
+        <a href="http://192.168.56.10:8080" target="_blank" class="tool-link tl-jenkins">
+          <span class="tl-icon">⚙️</span>
+          <div class="tl-info">
+            <div class="tl-name">Jenkins</div>
+            <div class="tl-url">VM1:8080</div>
+          </div>
         </a>
         <a href="http://192.168.56.20:30061" target="_blank" class="tool-link tl-eureka">
-          <span class="tl-icon">🌐</span><div class="tl-info"><div class="tl-name">Eureka</div><div class="tl-url">:30061</div></div>
+          <span class="tl-icon">🌐</span>
+          <div class="tl-info">
+            <div class="tl-name">Eureka</div>
+            <div class="tl-url">:30061</div>
+          </div>
         </a>
-        <a href="http://192.168.56.10:8081"  target="_blank" class="tool-link tl-nexus">
-          <span class="tl-icon">📦</span><div class="tl-info"><div class="tl-name">Nexus</div><div class="tl-url">VM1:8081</div></div>
+        <a href="http://192.168.56.10:8081" target="_blank" class="tool-link tl-nexus">
+          <span class="tl-icon">📦</span>
+          <div class="tl-info">
+            <div class="tl-name">Nexus</div>
+            <div class="tl-url">VM1:8081</div>
+          </div>
         </a>
       </div>
     </div>

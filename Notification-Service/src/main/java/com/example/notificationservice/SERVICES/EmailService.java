@@ -15,7 +15,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${notification.email.from:noreply@stb.tn}")
+    @Value("${notification.email.from:tarek.gadhgadhi@edu.isetcom.tn}")
     private String from;
 
     public void send(String to, String subject, String body) {
