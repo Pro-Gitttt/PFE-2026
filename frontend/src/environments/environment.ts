@@ -1,9 +1,6 @@
-
 export const environment = {
 
   production: false,
-
-
 
   apiGateway: 'http://192.168.56.20:30080',
 
@@ -17,6 +14,6 @@ export const environment = {
 
   apiPrometheus: 'http://192.168.56.20:30080/prometheus',
 
-
+  apiAudit: 'http://192.168.56.20:30080/api/audit',   // ← NEW
 
 };

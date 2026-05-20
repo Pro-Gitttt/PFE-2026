@@ -18,11 +18,9 @@ pipeline {
         SONAR_URL     = "http://192.168.56.10:9000"
 
         // Security service — NodePort on Kubernetes VM (30083)
-        // Direct call because Jenkins is outside the cluster
         SECURITY_SERVICE_URL = "http://192.168.56.20:30083/api/security/scan"
 
         // Backend API through Gateway NodePort (30080) on Kubernetes VM
-        // Used to update execution status after deploy
         GATEWAY_URL   = "http://192.168.56.20:30080"
 
         // k8s manifests location on Jenkins workspace
@@ -92,9 +90,6 @@ pipeline {
         }
 
         // ─────────────────────────────────────────
-        // Send Trivy + Gitleaks reports to Security Service.
-        // Security Service scores the results and sets blocked=true if score < threshold.
-        // ─────────────────────────────────────────
         stage('Send Security Reports') {
             steps {
                 script {
@@ -113,7 +108,34 @@ pipeline {
                     echo "Security Service Response: ${response}"
 
                     if (response.contains('"blocked":true')) {
+                        // Emit audit event for blocked pipeline
+                        sh """
+                            curl -sf -X POST ${GATEWAY_URL}/api/audit/log \
+                              -H 'Content-Type: application/json' \
+                              -d '{
+                                "action":        "SECURITY_SCAN_BLOCKED",
+                                "resource":      "PIPELINE",
+                                "resourceId":    ${EXECUTION_ID},
+                                "details":       "Pipeline execution ${EXECUTION_ID} blocked by security score threshold",
+                                "status":        "FAILURE",
+                                "sourceService": "jenkins"
+                              }' || true
+                        """
                         error("❌ PIPELINE BLOCKED — Security score below threshold. Fix vulnerabilities and retry.")
+                    } else {
+                        // Emit audit event for passed scan
+                        sh """
+                            curl -sf -X POST ${GATEWAY_URL}/api/audit/log \
+                              -H 'Content-Type: application/json' \
+                              -d '{
+                                "action":        "SECURITY_SCAN_COMPLETED",
+                                "resource":      "PIPELINE",
+                                "resourceId":    ${EXECUTION_ID},
+                                "details":       "Security scan passed for execution ${EXECUTION_ID}",
+                                "status":        "SUCCESS",
+                                "sourceService": "jenkins"
+                              }' || true
+                        """
                     }
                 }
             }
@@ -130,6 +152,7 @@ pipeline {
                         docker build -t ${REGISTRY}/pipeline-service:latest     ./Pipeline-Service/
                         docker build -t ${REGISTRY}/security-service:latest     ./SECURITY-SERVICE/
                         docker build -t ${REGISTRY}/notification-service:latest ./Notification-Service/
+                        docker build -t ${REGISTRY}/audit-log-service:latest    ./Audit-Log-Service/
                     """
                 }
             }
@@ -153,13 +176,12 @@ pipeline {
                         docker push ${REGISTRY}/pipeline-service:latest
                         docker push ${REGISTRY}/security-service:latest
                         docker push ${REGISTRY}/notification-service:latest
+                        docker push ${REGISTRY}/audit-log-service:latest
                     """
                 }
             }
         }
 
-        // ─────────────────────────────────────────
-        // Rolling restart so k8s pulls the new :latest images
         // ─────────────────────────────────────────
         stage('Deploy to Kubernetes') {
             steps {
@@ -174,23 +196,26 @@ pipeline {
                     kubectl apply -f ${K8S_APPS}/pipeline.yaml
                     kubectl apply -f ${K8S_APPS}/security.yaml
                     kubectl apply -f ${K8S_APPS}/notification.yaml
+                    kubectl apply -f ${K8S_APPS}/audit.yaml
 
                     # Monitoring
                     kubectl apply -f ${K8S_MONITORING}/prometheus.yaml
                     kubectl apply -f ${K8S_MONITORING}/grafana.yaml
 
                     # Force rollout to pick up new :latest images
-                    kubectl rollout restart deployment/eureka-server    -n infra
-                    kubectl rollout restart deployment/api-gateway       -n infra
-                    kubectl rollout restart deployment/auth-service      -n apps
-                    kubectl rollout restart deployment/pipeline-service  -n apps
-                    kubectl rollout restart deployment/security-service  -n apps
+                    kubectl rollout restart deployment/eureka-server      -n infra
+                    kubectl rollout restart deployment/api-gateway         -n infra
+                    kubectl rollout restart deployment/auth-service        -n apps
+                    kubectl rollout restart deployment/pipeline-service    -n apps
+                    kubectl rollout restart deployment/security-service    -n apps
                     kubectl rollout restart deployment/notification-service -n apps
+                    kubectl rollout restart deployment/audit-log-service   -n apps
 
                     # Wait for rollouts to complete
-                    kubectl rollout status deployment/api-gateway       -n infra --timeout=120s
-                    kubectl rollout status deployment/pipeline-service  -n apps  --timeout=120s
-                    kubectl rollout status deployment/security-service  -n apps  --timeout=120s
+                    kubectl rollout status deployment/api-gateway          -n infra --timeout=120s
+                    kubectl rollout status deployment/pipeline-service     -n apps  --timeout=120s
+                    kubectl rollout status deployment/security-service     -n apps  --timeout=120s
+                    kubectl rollout status deployment/audit-log-service    -n apps  --timeout=120s
                 """
             }
         }
@@ -223,22 +248,42 @@ pipeline {
         success {
             echo "✅ PIPELINE SUCCESS — All services deployed!"
             script {
-                // Notify backend that execution succeeded
                 sh """
                     curl -sf -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
                       -H 'Content-Type: application/json' \
                       -d '{"status":"SUCCESS"}' || true
+
+                    curl -sf -X POST ${GATEWAY_URL}/api/audit/log \
+                      -H 'Content-Type: application/json' \
+                      -d '{
+                        "action":        "PIPELINE_TRIGGERED",
+                        "resource":      "PIPELINE",
+                        "resourceId":    ${EXECUTION_ID},
+                        "details":       "Pipeline execution ${EXECUTION_ID} deployed successfully",
+                        "status":        "SUCCESS",
+                        "sourceService": "jenkins"
+                      }' || true
                 """
             }
         }
         failure {
             echo "❌ PIPELINE FAILED"
             script {
-                // Notify backend that execution failed
                 sh """
                     curl -sf -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
                       -H 'Content-Type: application/json' \
                       -d '{"status":"FAILED"}' || true
+
+                    curl -sf -X POST ${GATEWAY_URL}/api/audit/log \
+                      -H 'Content-Type: application/json' \
+                      -d '{
+                        "action":        "PIPELINE_ABORTED",
+                        "resource":      "PIPELINE",
+                        "resourceId":    ${EXECUTION_ID},
+                        "details":       "Pipeline execution ${EXECUTION_ID} failed",
+                        "status":        "FAILURE",
+                        "sourceService": "jenkins"
+                      }' || true
                 """
             }
         }

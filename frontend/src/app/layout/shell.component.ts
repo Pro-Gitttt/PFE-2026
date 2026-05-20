@@ -16,38 +16,34 @@ interface NavItem {
   path: string;
   label: string;
   icon: string;
-  roles?: string[]; // undefined = visible to all authenticated
+  roles?: string[];
 }
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterOutlet,
-    RouterLink,
-    RouterLinkActive
-  ],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './shell.component.html',
   styleUrls: ['./shell.component.scss'],
 })
 export class ShellComponent {
 
-  private router = inject(Router);
+  private router    = inject(Router);
   private sanitizer = inject(DomSanitizer);
-  public auth = inject(AuthService);
+  public  auth      = inject(AuthService);
 
   private readonly allNavItems: NavItem[] = [
-    { path: '/dashboard',     label: 'Dashboard',      icon: 'grid' },
-    { path: '/projects',      label: 'Projets',         icon: 'folder',   roles: ['ADMIN', 'DEV', 'DEVOPS'] },
-    { path: '/pipelines',     label: 'Pipelines',       icon: 'activity', roles: ['ADMIN', 'DEV', 'DEVOPS'] },
-    { path: '/security',      label: 'Sécurité',        icon: 'shield' },
-    { path: '/monitoring',    label: 'Monitoring',      icon: 'monitor',  roles: ['ADMIN', 'DEVOPS'] },
-    { path: '/notifications', label: 'Notifications',   icon: 'bell' },
-    { path: '/admin',         label: 'Administration',  icon: 'users',    roles: ['ADMIN'] },
+    { path: '/dashboard',     label: 'Dashboard',       icon: 'grid' },
+    { path: '/projects',      label: 'Projets',          icon: 'folder',   roles: ['ADMIN', 'DEV', 'DEVOPS'] },
+    { path: '/pipelines',     label: 'Pipelines',        icon: 'activity', roles: ['ADMIN', 'DEV', 'DEVOPS'] },
+    { path: '/security',      label: 'Sécurité',         icon: 'shield' },
+    { path: '/monitoring',    label: 'Monitoring',       icon: 'monitor',  roles: ['ADMIN', 'DEVOPS'] },
+    { path: '/notifications', label: 'Notifications',    icon: 'bell' },
+    // ── NEW ──────────────────────────────────────────────────────
+    { path: '/audit-logs',    label: 'Audit Logs',       icon: 'audit',    roles: ['ADMIN', 'DEVOPS'] },
+    { path: '/admin',         label: 'Administration',   icon: 'users',    roles: ['ADMIN'] },
   ];
 
-  /** Nav items visible to the current user's role */
   readonly navItems = computed(() => {
     const role = this.auth.role;
     return this.allNavItems.filter(item =>
@@ -68,6 +64,7 @@ export class ShellComponent {
         security:      'Sécurité',
         monitoring:    'Monitoring',
         notifications: 'Notifications',
+        'audit-logs':  'Audit Logs',         // ← NEW
         admin:         'Administration',
       } as Record<string, string>)[seg] ?? 'DevSecOps STB';
     })
@@ -77,9 +74,7 @@ export class ShellComponent {
     initialValue: 'Tableau de bord',
   });
 
-  toggleSidebar() {
-    this.sidebarOpen.update(v => !v);
-  }
+  toggleSidebar() { this.sidebarOpen.update(v => !v); }
 
   get initials(): string {
     const user = this.auth.currentUser?.();
@@ -115,6 +110,14 @@ export class ShellComponent {
         <rect x="2" y="3" width="20" height="14" rx="2"/>
         <line x1="8" y1="21" x2="16" y2="21"/>
         <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>`,
+      // ── NEW icon for Audit Logs ──────────────────────────────
+      audit: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
       </svg>`,
     };
     return this.sanitizer.bypassSecurityTrustHtml(icons[name] || '');

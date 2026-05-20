@@ -1,6 +1,7 @@
 package com.example.authservice.service;
 
 import com.example.authservice.Dto.*;
+import com.example.authservice.client.AuditLogClient;
 import com.example.authservice.entities.User;
 import com.example.authservice.exception.ResourceNotFoundException;
 import com.example.authservice.repositories.UserRepository;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +24,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository  userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService      jwtService;
+    private final AuditLogClient  auditLogClient;      // ← NEW
 
     // ================= REGISTER =================
     @Override
@@ -44,6 +47,18 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
+        // ── AUDIT ──
+        auditLogClient.send(Map.of(
+                "username",      user.getUsername(),
+                "userId",        user.getId(),
+                "action",        "USER_REGISTER",
+                "resource",      "USER",
+                "resourceId",    user.getId(),
+                "details",       "New user registered with role " + user.getRole(),
+                "status",        "SUCCESS",
+                "sourceService", "auth-service"
+        ));
+
         return buildAuthResponse(user);
     }
 
@@ -54,8 +69,30 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword()))
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            // ── AUDIT failed login ──
+            auditLogClient.send(Map.of(
+                    "username",      request.getUsername(),
+                    "action",        "USER_LOGIN",
+                    "resource",      "USER",
+                    "details",       "Failed login attempt — invalid password",
+                    "status",        "FAILURE",
+                    "sourceService", "auth-service"
+            ));
             throw new RuntimeException("Invalid credentials");
+        }
+
+        // ── AUDIT successful login ──
+        auditLogClient.send(Map.of(
+                "username",      user.getUsername(),
+                "userId",        user.getId(),
+                "action",        "USER_LOGIN",
+                "resource",      "USER",
+                "resourceId",    user.getId(),
+                "details",       "User logged in",
+                "status",        "SUCCESS",
+                "sourceService", "auth-service"
+        ));
 
         return buildAuthResponse(user);
     }
@@ -66,7 +103,6 @@ public class AuthServiceImpl implements AuthService {
 
         String refreshToken = request.getRefreshToken();
 
-        // ✅ CHECK TYPE FIRST
         String type = jwtService.extractType(refreshToken);
         if (!"refresh".equals(type))
             throw new RuntimeException("Invalid token type");
@@ -76,9 +112,20 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // ✅ IMPORTANT: do NOT use isTokenValid() (it enforces access type)
         if (jwtService.isTokenExpired(refreshToken))
             throw new RuntimeException("Refresh token expired");
+
+        // ── AUDIT ──
+        auditLogClient.send(Map.of(
+                "username",      user.getUsername(),
+                "userId",        user.getId(),
+                "action",        "USER_REFRESH_TOKEN",
+                "resource",      "USER",
+                "resourceId",    user.getId(),
+                "details",       "Access token refreshed",
+                "status",        "SUCCESS",
+                "sourceService", "auth-service"
+        ));
 
         return buildAuthResponse(user);
     }

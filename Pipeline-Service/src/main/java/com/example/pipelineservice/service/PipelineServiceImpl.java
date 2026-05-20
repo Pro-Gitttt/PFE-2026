@@ -1,6 +1,7 @@
 package com.example.pipelineservice.service;
 
 import com.example.pipelineservice.MAPPER.PipelineMapper;
+import com.example.pipelineservice.client.AuditLogClient;
 import com.example.pipelineservice.client.dto.request.CreatePipelineRequest;
 import com.example.pipelineservice.client.dto.response.PipelineResponse;
 import com.example.pipelineservice.entities.Pipeline;
@@ -12,11 +13,13 @@ import com.example.pipelineservice.security.AuthorizationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +30,8 @@ public class PipelineServiceImpl implements PipelineService {
     private final PipelineRepository pipelineRepository;
     private final ProjectRepository  projectRepository;
     private final PipelineMapper     pipelineMapper;
-    private final AuthorizationHelper auth;   // ← injected helper
+    private final AuthorizationHelper auth;
+    private final AuditLogClient     auditLogClient;    // ← NEW
 
     @Override
     public PipelineResponse createPipeline(Long projectId, CreatePipelineRequest request) {
@@ -35,7 +39,20 @@ public class PipelineServiceImpl implements PipelineService {
         assertProjectAccess(project);
 
         Pipeline pipeline = pipelineMapper.toEntity(request, project);
-        return pipelineMapper.toResponse(pipelineRepository.save(pipeline));
+        PipelineResponse response = pipelineMapper.toResponse(pipelineRepository.save(pipeline));
+
+        // ── AUDIT ──
+        auditLogClient.send(Map.of(
+                "username",      currentUsername(),
+                "action",        "PIPELINE_CREATED",
+                "resource",      "PIPELINE",
+                "resourceId",    response.getId(),
+                "details",       "Pipeline '" + response.getName() + "' created in project " + projectId,
+                "status",        "SUCCESS",
+                "sourceService", "pipeline-service"
+        ));
+
+        return response;
     }
 
     @Override
@@ -62,14 +79,39 @@ public class PipelineServiceImpl implements PipelineService {
 
         pipeline.setName(request.getName());
         pipeline.setJenkinsJobName(request.getJenkinsJobName());
-        return pipelineMapper.toResponse(pipelineRepository.save(pipeline));
+        PipelineResponse response = pipelineMapper.toResponse(pipelineRepository.save(pipeline));
+
+        // ── AUDIT ──
+        auditLogClient.send(Map.of(
+                "username",      currentUsername(),
+                "action",        "PIPELINE_UPDATED",
+                "resource",      "PIPELINE",
+                "resourceId",    pipelineId,
+                "details",       "Pipeline '" + response.getName() + "' updated",
+                "status",        "SUCCESS",
+                "sourceService", "pipeline-service"
+        ));
+
+        return response;
     }
 
     @Override
     public void deletePipeline(Long pipelineId) {
         Pipeline pipeline = findPipelineOrThrow(pipelineId);
         assertProjectAccess(pipeline.getProject());
+        String name = pipeline.getName();
         pipelineRepository.delete(pipeline);
+
+        // ── AUDIT ──
+        auditLogClient.send(Map.of(
+                "username",      currentUsername(),
+                "action",        "PIPELINE_DELETED",
+                "resource",      "PIPELINE",
+                "resourceId",    pipelineId,
+                "details",       "Pipeline '" + name + "' deleted",
+                "status",        "SUCCESS",
+                "sourceService", "pipeline-service"
+        ));
     }
 
     // ── helpers ───────────────────────────────────────────────
@@ -84,29 +126,15 @@ public class PipelineServiceImpl implements PipelineService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pipeline not found: " + id));
     }
 
-    /**
-     * THE ORIGINAL BUG WAS HERE.
-     *
-     * Old code (broken):
-     * ─────────────────────────────────────────────────────────────
-     *   boolean isAdmin = auth.stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-     *   if (!isAdmin && !project.getCreatedBy().equals(username)) { → FORBIDDEN }
-     * ─────────────────────────────────────────────────────────────
-     * Bug: DEVOPS was never checked → always hit the ownership check → always FORBIDDEN
-     * unless the DEVOPS user happened to be the project creator.
-     *
-     * Fixed code:
-     * ─────────────────────────────────────────────────────────────
-     *   ADMIN   → pass (global access)
-     *   DEVOPS  → pass (global access by role)
-     *   DEV     → pass only if project.createdBy == currentUser
-     *   AUDITOR → pass only if project.createdBy == currentUser
-     * ─────────────────────────────────────────────────────────────
-     */
     private void assertProjectAccess(Project project) {
-        if (!auth.canAccessProject(project.getCreatedBy())) {
+        if (!auth.canAccessProject(project)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied: you do not have permission to access this project.");
+                    "Access denied to project: " + project.getId());
         }
+    }
+
+    private String currentUsername() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null ? authentication.getName() : "system";
     }
 }

@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -20,6 +21,7 @@ data:
     CREATE DATABASE IF NOT EXISTS pipelinedb     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     CREATE DATABASE IF NOT EXISTS securitydb     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     CREATE DATABASE IF NOT EXISTS notificationdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS auditlogdb     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ---
 apiVersion: apps/v1
 kind: Deployment
