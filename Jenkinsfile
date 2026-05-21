@@ -70,9 +70,9 @@ pipeline {
         stage('Trivy Scan') {
             steps {
                 sh '''
-                    trivy fs --format json --output trivy.json . 2>/dev/null || true
-                    if [ ! -s trivy.json ]; then echo '{"Results":[]}' > trivy.json; fi
-                    echo "trivy.json: $(wc -c < trivy.json) bytes"
+                    trivy fs --format json --output ${WORKSPACE}/trivy.json . 2>/dev/null || true
+                    if [ ! -s ${WORKSPACE}/trivy.json ]; then echo '{"Results":[]}' > ${WORKSPACE}/trivy.json; fi
+                    echo "trivy.json: $(wc -c < ${WORKSPACE}/trivy.json) bytes"
                 '''
             }
         }
@@ -84,9 +84,9 @@ pipeline {
                     gitleaks detect \
                       --source . \
                       --report-format json \
-                      --report-path gitleaks.json 2>/dev/null || true
-                    if [ ! -s gitleaks.json ]; then echo '[]' > gitleaks.json; fi
-                    echo "gitleaks.json: $(wc -c < gitleaks.json) bytes"
+                      --report-path ${WORKSPACE}/gitleaks.json 2>/dev/null || true
+                    if [ ! -s ${WORKSPACE}/gitleaks.json ]; then echo '[]' > ${WORKSPACE}/gitleaks.json; fi
+                    echo "gitleaks.json: $(wc -c < ${WORKSPACE}/gitleaks.json) bytes"
                 '''
             }
         }
@@ -103,8 +103,8 @@ pipeline {
                         curl -sf -X POST ${SECURITY_SERVICE_URL} \
                           -F "executionId=${EXECUTION_ID}" \
                           -F "projectId=${PROJECT_ID}" \
-                          -F "trivy=@trivy.json" \
-                          -F "gitleaks=@gitleaks.json"
+                          -F "trivy=@${WORKSPACE}/trivy.json" \
+                          -F "gitleaks=@${WORKSPACE}/gitleaks.json"
                     """, returnStdout: true).trim()
 
                     echo "Security Service Response: ${response}"
