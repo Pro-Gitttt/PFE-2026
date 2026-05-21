@@ -18,6 +18,7 @@ spec:
       containers:
         - name: api-gateway
           image: 192.168.56.10:5000/api-gateway:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8084
           env:
@@ -31,13 +32,17 @@ spec:
               value: "true"
             - name: MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS
               value: always
+          startupProbe:
+            httpGet: { path: /actuator/health, port: 8084 }
+            failureThreshold: 30
+            periodSeconds: 10
           readinessProbe:
             httpGet: { path: /actuator/health, port: 8084 }
-            initialDelaySeconds: 50
+            initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             httpGet: { path: /actuator/health, port: 8084 }
-            initialDelaySeconds: 90
+            initialDelaySeconds: 30
             periodSeconds: 20
           resources:
             requests: { memory: "256Mi", cpu: "100m" }

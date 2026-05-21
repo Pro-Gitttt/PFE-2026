@@ -18,6 +18,8 @@
         <module>SECURITY-SERVICE</module>
         <module>Eureka-Server</module>
         <module>Gateway</module>
+        <module>Audit-Log-Service</module>
+        <module>Notification-Service</module>
 
 
     </modules>
