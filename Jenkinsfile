@@ -70,8 +70,9 @@ pipeline {
         stage('Trivy Scan') {
             steps {
                 sh '''
-                    trivy fs --format json -o trivy.json . || true
-                    test -s trivy.json || echo "{}" > trivy.json
+                    trivy fs --format json --output trivy.json . 2>/dev/null || true
+                    if [ ! -s trivy.json ]; then echo '{"Results":[]}' > trivy.json; fi
+                    echo "trivy.json: $(wc -c < trivy.json) bytes"
                 '''
             }
         }
@@ -83,8 +84,9 @@ pipeline {
                     gitleaks detect \
                       --source . \
                       --report-format json \
-                      --report-path gitleaks.json || true
-                    test -s gitleaks.json || echo "{}" > gitleaks.json
+                      --report-path gitleaks.json 2>/dev/null || true
+                    if [ ! -s gitleaks.json ]; then echo '[]' > gitleaks.json; fi
+                    echo "gitleaks.json: $(wc -c < gitleaks.json) bytes"
                 '''
             }
         }
