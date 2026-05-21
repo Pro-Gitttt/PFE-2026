@@ -127,7 +127,7 @@ public class PipelineServiceImpl implements PipelineService {
     }
 
     private void assertProjectAccess(Project project) {
-        if (!auth.canAccessProject(project)) {
+        if (!auth.canAccessProject(project.getCreatedBy())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Access denied to project: " + project.getId());
         }
