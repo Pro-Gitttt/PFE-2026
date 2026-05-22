@@ -83,6 +83,7 @@ pipeline {
                 sh '''
                     gitleaks detect \
                       --source . \
+                      --config ${WORKSPACE}/.gitleaks.toml \
                       --report-format json \
                       --report-path ${WORKSPACE}/gitleaks.json 2>/dev/null || true
                     if [ ! -s ${WORKSPACE}/gitleaks.json ]; then echo '[]' > ${WORKSPACE}/gitleaks.json; fi

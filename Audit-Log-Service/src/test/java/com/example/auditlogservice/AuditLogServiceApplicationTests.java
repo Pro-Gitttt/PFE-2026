@@ -16,7 +16,7 @@ import org.springframework.test.context.TestPropertySource;
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "eureka.client.enabled=false",
-        "jwt.secret=stb-devsecops-platform-jwt-secret-key-2026-minimum-64-characters-required!!"
+        "jwt.secret=test-only-jwt-secret-not-real-do-not-use-in-production-minimum-64-chars-xx"
 })
 class AuditLogServiceApplicationTests {
 
