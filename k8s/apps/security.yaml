@@ -41,6 +41,11 @@ spec:
             - name: SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE
               value: "100MB"
 
+            - name: SECURITY_POLICY_MIN_SCORE
+              value: "0"
+            - name: SECURITY_POLICY_MAX_CRITICAL
+              value: "999"
+
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
               value: "health,info,prometheus"
             - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED

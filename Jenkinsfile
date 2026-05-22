@@ -110,7 +110,7 @@ pipeline {
                     echo "Security Service Response: ${response}"
 
                     if (response.contains('"blocked":true')) {
-                        // Emit audit event for blocked pipeline
+                        // Audit the block event
                         sh """
                             curl -sf -X POST ${GATEWAY_URL}/api/audit/log \
                               -H 'Content-Type: application/json' \
@@ -118,12 +118,18 @@ pipeline {
                                 "action":        "SECURITY_SCAN_BLOCKED",
                                 "resource":      "PIPELINE",
                                 "resourceId":    ${EXECUTION_ID},
-                                "details":       "Pipeline execution ${EXECUTION_ID} blocked by security score threshold",
+                                "details":       "Pipeline execution ${EXECUTION_ID} blocked — security score below threshold or too many critical vulnerabilities",
                                 "status":        "FAILURE",
                                 "sourceService": "jenkins"
                               }' || true
                         """
-                        error("❌ PIPELINE BLOCKED — Security score below threshold. Fix vulnerabilities and retry.")
+                        // Update execution status to BLOCKED
+                        sh """
+                            curl -sf -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
+                              -H 'Content-Type: application/json' \
+                              -d '{"status":"BLOCKED"}' || true
+                        """
+                        error("❌ PIPELINE BLOCKED — Security vulnerabilities detected. Fix them and retry.")
                     } else {
                         // Emit audit event for passed scan
                         sh """

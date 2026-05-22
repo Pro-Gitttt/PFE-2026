@@ -8,7 +8,8 @@ import org.springframework.test.context.TestPropertySource;
 @SpringBootTest
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
-        "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1",
+        // H2 with MySQL compatibility mode — handles ENUM columns correctly
+        "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MySQL;NON_KEYWORDS=ACTION,STATUS,VALUE",
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
@@ -21,6 +22,6 @@ class AuditLogServiceApplicationTests {
 
     @Test
     void contextLoads() {
-        // Verifies that the Spring context starts correctly
+        // Verifies the Spring context starts correctly with all beans wired
     }
 }
