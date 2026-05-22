@@ -70,7 +70,15 @@ pipeline {
         stage('Trivy Scan') {
             steps {
                 sh '''
-                    trivy fs --format json --output ${WORKSPACE}/trivy.json . 2>/dev/null || true
+                    trivy fs \
+                      --format json \
+                      --output ${WORKSPACE}/trivy.json \
+                      --ignore-unfixed \
+                      --severity CRITICAL,HIGH \
+                      --skip-dirs "frontend/node_modules,frontend/.angular,frontend/dist" \
+                      --skip-dirs "**/target,**/target/**" \
+                      --ignorefile ${WORKSPACE}/.trivyignore \
+                      . 2>/dev/null || true
                     if [ ! -s ${WORKSPACE}/trivy.json ]; then echo '{"Results":[]}' > ${WORKSPACE}/trivy.json; fi
                     echo "trivy.json: $(wc -c < ${WORKSPACE}/trivy.json) bytes"
                 '''

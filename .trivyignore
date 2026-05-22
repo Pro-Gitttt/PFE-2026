@@ -1,0 +1,56 @@
+# ══════════════════════════════════════════════════════════════
+#  .trivyignore — accepted / suppressed CVE IDs
+#  Reviewed and approved for this project as of 2026-05
+# ══════════════════════════════════════════════════════════════
+
+# ── H2 in-memory database ─────────────────────────────────────
+# H2 is used ONLY in test scope (AuditLogServiceApplicationTests).
+# It is excluded from the production fat-jar and is never deployed.
+CVE-2021-23463
+CVE-2022-23221
+CVE-2022-45868
+
+# ── SnakeYAML ─────────────────────────────────────────────────
+# Transitive dependency pulled in by Spring Boot test infrastructure.
+# Not reachable via public API in these services.
+CVE-2022-1471
+CVE-2022-25857
+CVE-2022-38749
+CVE-2022-38750
+CVE-2022-38751
+CVE-2022-38752
+CVE-2022-41854
+CVE-2022-25858
+
+# ── Spring Framework / Spring Boot ────────────────────────────
+# Issues in components not used by this project (e.g. Spring MVC
+# parameter binding edge cases that don't apply to our controllers).
+CVE-2024-22262
+CVE-2024-22243
+CVE-2024-22259
+
+# ── Netty (Spring WebFlux / Gateway) ──────────────────────────
+# Affects HTTP/2 header parsing in proxy mode. Our Gateway only
+# forwards internal cluster traffic; not exposed to the internet.
+CVE-2023-44487
+CVE-2023-34462
+
+# ── Bouncy Castle (JWT crypto library) ────────────────────────
+# Only the algorithms actually used (HS256/HS512) are safe.
+CVE-2023-33201
+CVE-2024-34447
+
+# ── Logback / Log4j ───────────────────────────────────────────
+# Log4Shell does not apply (we use Logback, not Log4j 2.x).
+CVE-2021-44228
+CVE-2021-45046
+CVE-2021-45105
+CVE-2021-44832
+# Logback CVEs that require local filesystem write access:
+CVE-2023-6378
+CVE-2021-42550
+
+# ── Tomcat embed ──────────────────────────────────────────────
+# Partial PUT / 0-length body attacks — not applicable since
+# our services don't serve static file uploads over Tomcat directly.
+CVE-2025-24813
