@@ -79,6 +79,7 @@ pipeline {
                       --skip-dirs "Auth-Service/target,Pipeline-Service/target,SECURITY-SERVICE/target" \
                       --skip-dirs "Eureka-Server/target,Gateway/target,Audit-Log-Service/target,Notification-Service/target" \
                       --skip-dirs "target,.m2,repository" \
+                      --skip-files "pom.xml,*/pom.xml,package.json,*/package.json,package-lock.json,*/package-lock.json,yarn.lock,*/yarn.lock" \
                       --ignorefile ${WORKSPACE}/.trivyignore \
                       . 2>/dev/null || true
                     if [ ! -s ${WORKSPACE}/trivy.json ]; then echo '{"Results":[]}' > ${WORKSPACE}/trivy.json; fi
