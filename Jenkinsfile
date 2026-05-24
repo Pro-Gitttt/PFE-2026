@@ -76,7 +76,9 @@ pipeline {
                       --ignore-unfixed \
                       --severity CRITICAL,HIGH \
                       --skip-dirs "frontend/node_modules,frontend/.angular,frontend/dist" \
-                      --skip-dirs "**/target,**/target/**" \
+                      --skip-dirs "Auth-Service/target,Pipeline-Service/target,SECURITY-SERVICE/target" \
+                      --skip-dirs "Eureka-Server/target,Gateway/target,Audit-Log-Service/target,Notification-Service/target" \
+                      --skip-dirs "target,.m2,repository" \
                       --ignorefile ${WORKSPACE}/.trivyignore \
                       . 2>/dev/null || true
                     if [ ! -s ${WORKSPACE}/trivy.json ]; then echo '{"Results":[]}' > ${WORKSPACE}/trivy.json; fi

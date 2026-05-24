@@ -23,7 +23,7 @@ spec:
             - containerPort: 8083
           env:
             - name: SPRING_DATASOURCE_URL
-              value: "jdbc:mysql://mysql.infra.svc.cluster.local:3306/securitydb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+              value: "jdbc:mysql://mysql.infra.svc.cluster.local:3306/securitydb?createDatabaseIfNotExist=true&useSSL=true&serverTimezone=UTC"
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom: { secretKeyRef: { name: db-secret, key: DB_USERNAME } }
             - name: SPRING_DATASOURCE_PASSWORD
@@ -42,9 +42,9 @@ spec:
               value: "100MB"
 
             - name: SECURITY_POLICY_MIN_SCORE
-              value: "0"
+              value: "25"
             - name: SECURITY_POLICY_MAX_CRITICAL
-              value: "999"
+              value: "5"
 
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
               value: "health,info,prometheus"

@@ -28,7 +28,7 @@ spec:
 
           env:
             - name: SPRING_DATASOURCE_URL
-              value: "jdbc:mysql://mysql.infra.svc.cluster.local:3306/authdb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
+              value: "jdbc:mysql://mysql.infra.svc.cluster.local:3306/authdb?createDatabaseIfNotExist=true&useSSL=true&serverTimezone=UTC"
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef: { name: db-secret, key: DB_USERNAME }
@@ -139,7 +139,7 @@ spec:
 
           env:
             - name: SPRING_DATASOURCE_URL
-              value: "jdbc:mysql://mysql.infra.svc.cluster.local:3306/pipelinedb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
+              value: "jdbc:mysql://mysql.infra.svc.cluster.local:3306/pipelinedb?createDatabaseIfNotExist=true&useSSL=true&serverTimezone=UTC"
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef: { name: db-secret, key: DB_USERNAME }
