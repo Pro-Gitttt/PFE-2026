@@ -5,7 +5,7 @@ export type EventType =
   | 'SECURITY_BLOCKED'
   | 'SECURITY_WARNING'
   | 'UPDATE_PROJECT'
-  | string;  // allow any string from backend
+  | string;
 
 export type NChannel = 'EMAIL' | 'SLACK';
 export type NStatus  = 'PENDING' | 'SENT' | 'FAILED';
@@ -19,6 +19,6 @@ export interface NotificationItem {
   message:             string;
   projectId:           number;
   pipelineExecutionId: number;
-  createdAt:           string;
-  sentAt:              string;
+  createdAt:           string | null;
+  sentAt:              string | null;
 }
