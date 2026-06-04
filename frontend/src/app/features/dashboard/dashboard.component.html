@@ -289,7 +289,7 @@
             <div class="proj-dot" [class.dot-active]="!p.status || p.status==='ACTIVE'"></div>
             <div class="proj-info">
               <div class="proj-name">{{ p.name }}</div>
-              <div class="proj-url">{{ p.repositoryUrl | slice:0:40 }}{{ (p.repositoryUrl?.length ?? 0) > 40 ? '…' : '' }}</div>
+              <div class="proj-url">{{ p.repositoryUrl | slice:0:40 }}{{ (p.repositoryUrl ? p.repositoryUrl.length : 0) > 40 ? '…' : '' }}</div>
             </div>
             <div class="proj-meta">
               <span class="proj-branch">{{ p.branch }}</span>
@@ -313,13 +313,13 @@
           <div class="feed-item" *ngFor="let n of recentNotifications()"
                [class.feed-success]="n.eventType==='PIPELINE_SUCCESS'"
                [class.feed-failed]="n.eventType==='PIPELINE_FAILED'"
-               [class.feed-security]="n.eventType?.startsWith('SECURITY')">
+               [class.feed-security]="n.eventType.startsWith('SECURITY')">
             <div class="feed-icon-wrap">
               <span class="feed-icon">{{ eventIcon(n.eventType) }}</span>
             </div>
             <div class="feed-body">
               <div class="feed-type">{{ eventLabel(n.eventType) }}</div>
-              <div class="feed-msg">{{ n.message | slice:0:60 }}{{ (n.message?.length ?? 0) > 60 ? '…' : '' }}</div>
+              <div class="feed-msg">{{ n.message | slice:0:60 }}{{ (n.message ? n.message.length : 0) > 60 ? '…' : '' }}</div>
             </div>
             <div class="feed-time">{{ timeAgo(n.createdAt) }}</div>
           </div>

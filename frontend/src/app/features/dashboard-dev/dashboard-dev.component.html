@@ -1,0 +1,246 @@
+<div class="page">
+
+  <!-- ══ HEADER ════════════════════════════════════════════════ -->
+  <div class="page-header">
+    <div>
+      <h1>Dashboard Développeur</h1>
+      <p>Supervision — Projets, pipelines, tests et qualité du code.
+        <span class="role-pill dev-pill">DEV</span>
+      </p>
+    </div>
+    <div class="header-right">
+      <span class="refresh-info">Actualisé {{ lastRefresh() | date:'HH:mm:ss' }}</span>
+      <button class="btn-refresh" (click)="loadAll()" [disabled]="loading()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+        </svg>
+        Actualiser
+      </button>
+      <div class="user-chip">
+        <span class="avatar-xs">{{ auth.username.slice(0,2).toUpperCase() }}</span>
+        <span>{{ auth.username }}</span>
+        <span class="dev-tag">Développeur</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skeleton -->
+  <ng-container *ngIf="loading()">
+    <div class="skeleton-grid">
+      <div class="skeleton-card" *ngFor="let i of [1,2,3,4]"></div>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="!loading()">
+
+    <!-- ══ KPI STRIP ═════════════════════════════════════════════ -->
+    <div class="kpi-grid">
+
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ kpis().projects }}</div>
+          <div class="kpi-label">Projets</div>
+          <div class="kpi-sub">{{ kpis().projects }} enregistré(s)</div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-green">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ kpis().succeeded }}</div>
+          <div class="kpi-label">Déploiements réussis</div>
+          <div class="kpi-sub">{{ kpis().succeeded }} déploiement(s) DEPLOYED</div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-red">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ kpis().blocked }}</div>
+          <div class="kpi-label">Vulnérabilités critiques</div>
+          <div class="kpi-sub">{{ kpis().total }} au total · Analysé N/A</div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-purple">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-value">N/A</div>
+          <div class="kpi-label">Temps moyen pipeline</div>
+          <div class="kpi-sub">{{ kpis().succeeded + kpis().failed }} pipeline(s) au total</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ MIDDLE ROW: Tests + Builds + Taux ════════════════════ -->
+    <div class="charts-row">
+
+      <!-- Résultats des tests -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Résultats des tests</h3>
+          <span class="chart-sub">Cumul sur tous les builds</span>
+          <button class="icon-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="success-label">TAUX DE SUCCÈS
+          <span class="success-pct" [class.pct-good]="successRate()>=70" [class.pct-bad]="successRate()<50">
+            {{ successRate() }}%
+          </span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="successRate()"
+                 [class.fill-good]="successRate()>=70" [class.fill-bad]="successRate()<50"></div>
+          </div>
+          <span class="progress-label">{{ passedTests() }} / {{ totalTests() }} tests passés</span>
+        </div>
+
+        <!-- Donut + counters -->
+        <div class="test-donut-row">
+          <div class="donut-wrap">
+            <svg viewBox="0 0 100 100" width="110" height="110">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#f3f4f6" stroke-width="12"/>
+              <circle cx="50" cy="50" r="40" fill="none"
+                      [attr.stroke]="successRate() >= 70 ? '#22c55e' : successRate() >= 50 ? '#f97316' : '#ef4444'"
+                      stroke-width="12"
+                      stroke-linecap="round"
+                      [attr.stroke-dasharray]="donutCirc()"
+                      [attr.stroke-dashoffset]="passOffset()"
+                      transform="rotate(-90 50 50)"/>
+              <text x="50" y="47" text-anchor="middle" font-size="14" font-weight="800" fill="#111827">{{ successRate() }}%</text>
+              <text x="50" y="60" text-anchor="middle" font-size="8" fill="#9ca3af">succès</text>
+            </svg>
+          </div>
+          <div class="test-counts">
+            <div class="tc-item tc-pass">
+              <span class="tc-num">{{ passedTests() }}</span>
+              <span class="tc-lbl">Passés</span>
+            </div>
+            <div class="tc-item tc-fail">
+              <span class="tc-num">{{ failedTests() }}</span>
+              <span class="tc-lbl">Échoués</span>
+            </div>
+            <div class="tc-item tc-skip">
+              <span class="tc-num">0</span>
+              <span class="tc-lbl">Ignorés</span>
+            </div>
+          </div>
+        </div>
+
+        <a routerLink="/pipelines" class="btn-outline-sm">Voir l'analyse complète</a>
+      </div>
+
+      <!-- Historique des builds -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Historique des builds</h3>
+          <span class="chart-sub">5 derniers builds analysés</span>
+        </div>
+        <div class="builds-list">
+          <div *ngFor="let notif of buildHistory()" class="build-item">
+            <div class="build-status-dot" [class]="buildStatusClass(notif.eventType ?? '')"></div>
+            <div class="build-info">
+              <span class="build-proj">{{ projectName(notif.projectId) }}</span>
+              <span class="build-num">Build #{{ notif.id }}</span>
+              <span class="build-time">{{ notif.createdAt | date:'dd MMM, HH:mm' }}</span>
+            </div>
+            <div class="build-badges">
+              <span class="build-badge" [class]="buildStatusClass(notif.eventType ?? '')">
+                {{ buildStatusLabel(notif.eventType ?? '') }}
+              </span>
+              <span class="build-badge badge-skipped" *ngIf="notif.status === 'PENDING'">SKIPPED</span>
+            </div>
+          </div>
+          <div *ngIf="buildHistory().length === 0" class="empty-state">
+            <span>Aucun build trouvé</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Taux de tests par stage -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Taux de tests</h3>
+          <span class="chart-sub">Couverture & santé des stages — dernier build</span>
+        </div>
+        <div class="stage-rates">
+          <div *ngFor="let stage of stageRates()" class="stage-row">
+            <span class="stage-name">{{ stage.name }}</span>
+            <div class="stage-bar-wrap">
+              <div class="stage-bar">
+                <div class="stage-fill"
+                     [style.width.%]="stage.rate"
+                     [class.fill-good]="stage.rate>=70"
+                     [class.fill-warn]="stage.rate<70 && stage.rate>=50"
+                     [class.fill-bad]="stage.rate<50"></div>
+              </div>
+              <span class="stage-pct"
+                    [class.pct-good]="stage.rate>=70"
+                    [class.pct-warn]="stage.rate<70 && stage.rate>=50"
+                    [class.pct-bad]="stage.rate<50">{{ stage.rate }}%</span>
+            </div>
+            <div class="stage-delta"
+                 [class.delta-up]="stage.rate >= stage.prev"
+                 [class.delta-down]="stage.rate < stage.prev">
+              {{ stage.rate >= stage.prev ? '↑' : '↓' }} {{ stage.rate - stage.prev >= 0 ? '+' : '' }}{{ stage.rate - stage.prev }}% vs build précédent
+            </div>
+          </div>
+        </div>
+        <div class="stage-meta">
+          <div class="stage-meta-row">
+            <span class="sm-label">COUV. SONAR (MOY.)</span>
+            <span class="sm-val">{{ successRate() }}%</span>
+          </div>
+          <div class="stage-meta-row">
+            <span class="sm-label">Dernier build: {{ successRate() === 100 ? '100.0%' : successRate() + '.0%' }}</span>
+          </div>
+          <div class="stage-detail">
+            <div>STAGES — BUILD #{{ buildHistory()[0]?.id ?? '—' }}</div>
+            <table class="stage-table">
+              <tr *ngFor="let stage of stageRates()">
+                <td>{{ stage.name }}</td>
+                <td>
+                  <span class="stage-badge"
+                        [class.sbg-success]="stage.rate>=70"
+                        [class.sbg-fail]="stage.rate<50"
+                        [class.sbg-warn]="stage.rate<70 && stage.rate>=50">
+                    {{ stage.rate >= 70 ? 'OK' : stage.rate >= 50 ? 'WARN' : 'FAIL' }}
+                  </span>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </ng-container>
+</div>

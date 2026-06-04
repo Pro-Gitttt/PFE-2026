@@ -13,4 +13,5 @@ public class PipelineEventRequest {
     private String branch;
     private String commitHash;
     private String triggeredBy;
+    private String recipientEmail; // optional — overrides default recipient
 }

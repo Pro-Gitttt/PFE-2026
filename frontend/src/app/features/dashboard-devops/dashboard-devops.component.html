@@ -1,0 +1,301 @@
+<div class="page">
+
+  <!-- ══ HEADER ═══════════════════════════════════════════════════ -->
+  <div class="page-header">
+    <div>
+      <h1>Dashboard DevOps</h1>
+      <p>Supervision DevOps — Pipelines, sécurité et qualité du code.
+        <span class="role-pill devops-pill">DEVOPS</span>
+      </p>
+    </div>
+    <div class="header-right">
+      <span class="refresh-info">Actualisé {{ lastRefresh() | date:'HH:mm:ss' }}</span>
+      <button class="btn-refresh" (click)="loadAll()" [disabled]="loading()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+        </svg>
+        Actualiser
+      </button>
+      <div class="user-chip">
+        <span class="avatar-xs">{{ auth.username.slice(0,2).toUpperCase() }}</span>
+        <span>{{ auth.username }}</span>
+        <span class="role-tag">DevOps</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skeleton -->
+  <ng-container *ngIf="loading()">
+    <div class="skeleton-grid">
+      <div class="skeleton-card" *ngFor="let i of [1,2,3,4]"></div>
+    </div>
+    <div class="skeleton-grid sk2">
+      <div class="skeleton-card" *ngFor="let i of [1,2,3]"></div>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="!loading()">
+
+    <!-- ══ KPI STRIP ═════════════════════════════════════════════ -->
+    <div class="kpi-grid">
+
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ kpis().projects }}</div>
+          <div class="kpi-label">Projets</div>
+          <div class="kpi-sub">{{ kpis().projects }} enregistré(s)</div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-green">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ kpis().succeeded }}</div>
+          <div class="kpi-label">Déploiements réussis</div>
+          <div class="kpi-sub">{{ kpis().succeeded }} déploiement(s) DEPLOYED</div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-red">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-value">{{ kpis().blocked }}</div>
+          <div class="kpi-label">Vulnérabilités critiques</div>
+          <div class="kpi-sub">{{ kpis().total_notif }} au total</div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-purple">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-value">N/A</div>
+          <div class="kpi-label">Temps moyen pipeline</div>
+          <div class="kpi-sub">{{ kpis().succeeded + kpis().failed }} pipeline(s) au total</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ MIDDLE ROW: Alertes + Historique + Santé ══════════════ -->
+    <div class="charts-row">
+
+      <!-- Alertes pipeline -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Alertes pipeline</h3>
+          <span class="chart-sub">Vulnérabilités par build (Trivy · OWASP · Sonar)</span>
+        </div>
+        <div class="alert-legend">
+          <span class="dot dot-red"></span><span class="leg-txt">Critical</span>
+          <span class="dot dot-orange"></span><span class="leg-txt">High</span>
+          <span class="dot dot-blue"></span><span class="leg-txt">Bugs</span>
+        </div>
+        <div class="bar-chart-wrap">
+          <svg [attr.viewBox]="'0 0 ' + chartW + ' ' + (chartH + 28)" width="100%" preserveAspectRatio="none">
+            <line *ngFor="let pct of [25, 50, 75, 100]"
+                  [attr.x1]="0"
+                  [attr.y1]="chartH - 20 - ((pct / 100) * (chartH - 20))"
+                  [attr.x2]="chartW"
+                  [attr.y2]="chartH - 20 - ((pct / 100) * (chartH - 20))"
+                  stroke="#f3f4f6" stroke-width="1"/>
+            <ng-container *ngFor="let bar of svgBars()">
+              <rect *ngIf="bar.secH > 0"
+                    [attr.x]="bar.x" [attr.y]="chartH - 20 - bar.secH"
+                    [attr.width]="bar.bw" [attr.height]="bar.secH"
+                    fill="#ef4444" rx="2"/>
+              <rect *ngIf="bar.failH > 0"
+                    [attr.x]="bar.x" [attr.y]="chartH - 20 - bar.secH - bar.failH"
+                    [attr.width]="bar.bw" [attr.height]="bar.failH"
+                    fill="#f97316" rx="2"/>
+              <rect *ngIf="bar.sucH > 0"
+                    [attr.x]="bar.x" [attr.y]="chartH - 20 - bar.secH - bar.failH - bar.sucH"
+                    [attr.width]="bar.bw" [attr.height]="bar.sucH"
+                    fill="#22c55e" rx="2"/>
+              <text [attr.x]="bar.x + bar.bw / 2" [attr.y]="chartH + 12"
+                    text-anchor="middle" font-size="8" fill="#9ca3af">{{ bar.d.label }}</text>
+            </ng-container>
+          </svg>
+        </div>
+        <button class="btn-sm-outline" (click)="loadAll()">⟳ refresh</button>
+      </div>
+
+      <!-- Historique des builds -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Historique des builds</h3>
+          <span class="chart-sub">Statut global &amp; couverture de code par build</span>
+        </div>
+        <div class="build-legend">
+          <span class="dot dot-green"></span><span class="leg-txt">Statut</span>
+          <span class="line-dash line-blue"></span><span class="leg-txt">Couv. Tests</span>
+          <span class="line-dash line-purple"></span><span class="leg-txt">Couv. Sonar</span>
+        </div>
+        <div class="pipelines-list">
+          <div *ngFor="let notif of recentNotifs().slice(0, 6)" class="pipeline-row">
+            <span class="status-dot-sm" [class]="'sd-' + eventColor(notif.eventType ?? '')">
+              {{ eventIcon(notif.eventType ?? '') }}
+            </span>
+            <span class="pipe-project">{{ projectName(notif.projectId) }}</span>
+            <span class="pipe-time">{{ timeAgo(notif.createdAt ?? null) }}</span>
+            <span class="badge" [class]="'badge-' + eventColor(notif.eventType ?? '')">
+              {{ eventLabel(notif.eventType ?? '') | uppercase }}
+            </span>
+          </div>
+          <div *ngIf="recentNotifs().length === 0" class="empty-state">
+            <span>Chargement des pipelines…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Santé des services -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Santé des services</h3>
+          <span class="chart-sub">Score moyen de chaque stage (tous builds)</span>
+        </div>
+        <div class="health-radar">
+          <svg viewBox="0 0 120 120" width="120" height="120">
+            <!-- Spider web -->
+            <polygon points="60,15 105,45 105,75 60,105 15,75 15,45" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+            <polygon points="60,25 97,48 97,72 60,95 23,72 23,48" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+            <polygon points="60,38 87,55 87,65 60,82 33,65 33,55" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+            <!-- Data polygon -->
+            <polygon
+              [attr.points]="'60,' + (60 - (successRate() / 100) * 45) + ' ' +
+                             (60 + (successRate() / 100) * 45) + ',60 ' +
+                             '60,' + (60 + (securityScore() / 100) * 45) + ' ' +
+                             (60 - (successRate() / 100) * 35) + ',60'"
+              fill="rgba(29,158,117,0.2)" stroke="#1d9e75" stroke-width="1.5"/>
+            <!-- Labels -->
+            <text x="60" y="10" text-anchor="middle" font-size="8" fill="#6b7280">Build</text>
+            <text x="112" y="47" text-anchor="start" font-size="8" fill="#6b7280">Tests</text>
+            <text x="112" y="78" text-anchor="start" font-size="8" fill="#6b7280">Sonar</text>
+            <text x="60" y="116" text-anchor="middle" font-size="8" fill="#6b7280">Deploy</text>
+            <text x="8" y="78" text-anchor="end" font-size="8" fill="#6b7280">Sec.</text>
+            <text x="8" y="47" text-anchor="end" font-size="8" fill="#6b7280">OWASP</text>
+          </svg>
+          <div class="health-stats">
+            <div class="hstat" [class.hok]="successRate()>=80" [class.hwarn]="successRate()<80 && successRate()>=50" [class.hfail]="successRate()<50">
+              <span class="hdot">●</span>
+              <span class="hname">Build</span>
+              <span class="hval">{{ successRate() }}%</span>
+            </div>
+            <div class="hstat" [class.hok]="successRate()>=80" [class.hwarn]="successRate()<80">
+              <span class="hdot">●</span>
+              <span class="hname">Tests</span>
+              <span class="hval">{{ successRate() }}%</span>
+            </div>
+            <div class="hstat" [class.hok]="kpis().blocked===0" [class.hfail]="kpis().blocked>0">
+              <span class="hdot">●</span>
+              <span class="hname">Security</span>
+              <span class="hval">{{ securityScore() }}%</span>
+            </div>
+            <div class="hstat hok">
+              <span class="hdot">●</span>
+              <span class="hname">Deploy</span>
+              <span class="hval">{{ kpis().deployFailed===0 ? '100' : successRate() }}%</span>
+            </div>
+          </div>
+        </div>
+        <div class="health-legend">
+          <span class="dot dot-green"></span><span class="leg-txt">≥ 80% Sain</span>
+          <span class="dot dot-orange"></span><span class="leg-txt">Instable</span>
+          <span class="dot dot-red"></span><span class="leg-txt">En échec</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ BOTTOM ROW: Pipelines table + Alertes sécurité ════════ -->
+    <div class="bottom-row">
+
+      <!-- Pipelines table -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Pipelines</h3>
+          <span class="chart-sub">✓ {{ kpis().succeeded + kpis().failed }} exécution(s)</span>
+          <a routerLink="/pipelines" class="panel-link">Voir tout →</a>
+        </div>
+        <div class="table-wrap">
+          <table class="pipelines-table">
+            <thead>
+              <tr>
+                <th>NOM DU PROJET</th>
+                <th>DATE DE DÉBUT</th>
+                <th>DATE DE FIN</th>
+                <th>STATUT</th>
+                <th>SÉCURITÉ PAR</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let notif of recentNotifs()">
+                <td>{{ projectName(notif.projectId) }}</td>
+                <td>{{ notif.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+                <td>{{ notif.sentAt ? (notif.sentAt | date:'dd/MM/yyyy HH:mm:ss') : (notif.createdAt | date:'dd/MM/yyyy HH:mm:ss') }}</td>
+                <td>
+                  <span class="badge" [class]="'badge-' + eventColor(notif.eventType ?? '')">
+                    {{ eventLabel(notif.eventType ?? '') | uppercase }}
+                  </span>
+                </td>
+                <td class="cell-muted">{{ auth.username }}</td>
+              </tr>
+              <tr *ngIf="recentNotifs().length === 0">
+                <td colspan="5" class="empty-row">Aucune exécution de pipeline</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Alertes sécurité -->
+      <div class="chart-card security-panel">
+        <div class="chart-header">
+          <h3>Alertes sécurité</h3>
+          <span class="chart-sub">{{ kpis().blocked + kpis().warnings }} scan(s) en échec</span>
+        </div>
+        <div class="security-list">
+          <div *ngFor="let alert of securityAlerts()" class="security-item">
+            <div class="sec-header">
+              <span class="sec-title">{{ projectName(alert.projectId) }} — Pipeline #{{ alert.pipelineExecutionId ?? '?' }}</span>
+              <span class="sec-time">{{ timeAgo(alert.createdAt ?? null) }}</span>
+            </div>
+            <div class="sec-body">
+              <span class="badge badge-red">CRITICAL</span>
+              <span class="badge badge-orange" *ngIf="alert.eventType === 'SECURITY_WARNING'">WARNING</span>
+            </div>
+            <div class="sec-msg">{{ alert.message | slice:0:80 }}{{ (alert.message?.length ?? 0) > 80 ? '…' : '' }}</div>
+          </div>
+          <div *ngIf="securityAlerts().length === 0" class="empty-state">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
+            </svg>
+            <span>Aucune alerte sécurité</span>
+          </div>
+        </div>
+        <button class="btn-sm-outline" (click)="loadAll()">⟳ refresh</button>
+      </div>
+
+    </div>
+
+  </ng-container>
+</div>

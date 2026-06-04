@@ -134,14 +134,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ── Recent notifications ───────────────────────────────────────
   readonly recentNotifications = computed(() =>
     [...this.notifications()]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
       .slice(0, 10)
   );
 
   // ── Recent projects ────────────────────────────────────────────
   readonly recentProjects = computed(() =>
     [...this.projects()]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
       .slice(0, 5)
   );
 
@@ -220,7 +220,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return m[type] ?? type;
   }
 
-  timeAgo(dateStr: string): string {
+  timeAgo(dateStr: string | null): string {
+    if (!dateStr) return '—';
     const diff = Date.now() - new Date(dateStr).getTime();
     const m = Math.floor(diff / 60000);
     if (m < 1)  return 'à l\'instant';

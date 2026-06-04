@@ -2,10 +2,24 @@ import { Routes } from '@angular/router';
 import { roleGuard } from '../core/guards/role.guard';
 
 export const SHELL_ROUTES: Routes = [
+  // ── Dashboards par rôle ───────────────────────────────────────
   {
     path: 'dashboard',
     loadComponent: () => import('../features/dashboard/dashboard.component').then(m => m.DashboardComponent),
   },
+  {
+    path: 'dashboard-devops',
+    loadComponent: () => import('../features/dashboard-devops/dashboard-devops.component').then(m => m.DashboardDevopsComponent),
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'DEVOPS'] },
+  },
+  {
+    path: 'dashboard-dev',
+    loadComponent: () => import('../features/dashboard-dev/dashboard-dev.component').then(m => m.DashboardDevComponent),
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'DEV'] },
+  },
+  // ── Autres routes ─────────────────────────────────────────────
   {
     path: 'projects',
     loadComponent: () => import('../features/projects/projects.component').then(m => m.ProjectsComponent),

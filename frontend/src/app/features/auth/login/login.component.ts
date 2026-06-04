@@ -81,7 +81,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     setTimeout(() => this.ready.set(true), 60);
-    if (this.auth.isLoggedIn()) this.router.navigate(['/dashboard']);
+    if (this.auth.isLoggedIn()) this.router.navigate([this.auth.role === 'DEVOPS' ? '/dashboard-devops' : this.auth.role === 'DEV' ? '/dashboard-dev' : '/dashboard']);
   }
 
   ngOnDestroy(): void {
@@ -111,7 +111,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.error.set('');
     this.auth.login(this.form.getRawValue()).subscribe({
-      next: () => { this.loading.set(false); this.router.navigate(['/dashboard']); },
+      next: () => { this.loading.set(false); this.router.navigate([this.auth.role === 'DEVOPS' ? '/dashboard-devops' : this.auth.role === 'DEV' ? '/dashboard-dev' : '/dashboard']); },
       error: (e) => {
         this.error.set(
           e.error?.message || e.error?.error ||
@@ -131,7 +131,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       next: () => {
         this.regLoading.set(false);
         this.regSuccess.set(true);
-        setTimeout(() => { this.closeRegister(); this.router.navigate(['/dashboard']); }, 1500);
+        setTimeout(() => { this.closeRegister(); this.router.navigate([this.auth.role === 'DEVOPS' ? '/dashboard-devops' : this.auth.role === 'DEV' ? '/dashboard-dev' : '/dashboard']); }, 1500);
       },
       error: (e) => {
         this.regError.set(e?.error?.message || 'Erreur lors de l\'inscription');
