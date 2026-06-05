@@ -1,6 +1,5 @@
 package com.example.notificationservice.DTOs;
 
-
 import com.example.notificationservice.entities.*;
 import lombok.*;
 
@@ -13,6 +12,7 @@ public class NotificationResponse {
     private NotificationChannel channel;
     private NotificationStatus  status;
     private String              recipient;
+    private String              subject;       // ✅ FIXED: was missing
     private String              message;
     private Long                projectId;
     private Long                pipelineExecutionId;

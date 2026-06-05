@@ -47,14 +47,13 @@ spec:
               value: "true"
             - name: EUREKA_INSTANCE_NONSECUREPORT
               value: "8087"
+
             - name: SPRING_MAIL_USERNAME
-              value: "disabled"
+              valueFrom:
+                secretKeyRef: { name: mail-secret, key: MAIL_USERNAME }
             - name: SPRING_MAIL_PASSWORD
-              value: "disabled"
-            - name: NOTIFICATION_EMAIL_ENABLED
-              value: "false"
-            - name: NOTIFICATION_EMAIL_RECIPIENT
-              value: "admin@devsecops.local"
+              valueFrom:
+                secretKeyRef: { name: mail-secret, key: MAIL_PASSWORD }
 
             - name: JAVA_TOOL_OPTIONS
               value: "-Xms256m -Xmx768m -XX:+ExitOnOutOfMemoryError"

@@ -133,10 +133,7 @@ pipeline {
                                 "details":       "Pipeline execution ${EXECUTION_ID} blocked — security score below threshold or too many critical vulnerabilities",
                                 "status":        "FAILURE",
                                 "sourceService": "jenkins"
-                              }
-                    curl -sf -X POST ${GATEWAY_URL}/api/notifications/pipeline-event \
-                      -H 'Content-Type: application/json' \
-                      -d '{"pipelineExecutionId":${EXECUTION_ID},"projectId":${PROJECT_ID},"eventType":"PIPELINE_FAILED","projectName":"PFE-2026","branch":"tarek","triggeredBy":"jenkins"}' || true' || true
+                              }' || true
                         """
                         // Update execution status to BLOCKED
                         sh """
@@ -235,10 +232,10 @@ pipeline {
                     kubectl rollout restart deployment/audit-log-service   -n apps
 
                     # Wait for rollouts to complete
-                    kubectl rollout status deployment/api-gateway          -n infra --timeout=300s
-                    kubectl rollout status deployment/pipeline-service     -n apps  --timeout=300s
-                    kubectl rollout status deployment/security-service     -n apps  --timeout=300s
-                    kubectl rollout status deployment/audit-log-service    -n apps  --timeout=300s
+                    kubectl rollout status deployment/api-gateway          -n infra --timeout=120s
+                    kubectl rollout status deployment/pipeline-service     -n apps  --timeout=120s
+                    kubectl rollout status deployment/security-service     -n apps  --timeout=120s
+                    kubectl rollout status deployment/audit-log-service    -n apps  --timeout=120s
                 """
             }
         }
@@ -286,10 +283,6 @@ pipeline {
                         "status":        "SUCCESS",
                         "sourceService": "jenkins"
                       }' || true
-
-                    curl -sf -X POST ${GATEWAY_URL}/api/notifications/pipeline-event \
-                      -H 'Content-Type: application/json' \
-                      -d '{"pipelineExecutionId":${EXECUTION_ID},"projectId":${PROJECT_ID},"eventType":"PIPELINE_SUCCESS","projectName":"PFE-2026","branch":"tarek","commitHash":"'${COMMIT_HASH}'","triggeredBy":"jenkins"}' || true
                 """
             }
         }
@@ -311,10 +304,6 @@ pipeline {
                         "status":        "FAILURE",
                         "sourceService": "jenkins"
                       }' || true
-
-                    curl -sf -X POST ${GATEWAY_URL}/api/notifications/pipeline-event \
-                      -H 'Content-Type: application/json' \
-                      -d '{"pipelineExecutionId":${EXECUTION_ID},"projectId":${PROJECT_ID},"eventType":"PIPELINE_FAILED","projectName":"PFE-2026","branch":"tarek","commitHash":"'${COMMIT_HASH}'","triggeredBy":"jenkins"}' || true
                 """
             }
         }

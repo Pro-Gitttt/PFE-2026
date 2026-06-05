@@ -44,7 +44,6 @@ public class SecurityConfig {
 
                         // ✅ VERY IMPORTANT (fix Docker healthcheck)
                         .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers("/api/auth/internal/**").permitAll()
 
                         // everything else secured
                         .anyRequest().authenticated()

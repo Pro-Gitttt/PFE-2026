@@ -225,7 +225,7 @@
               <td><span class="sev-pill" [class]="sevClass(v.severity)">{{ v.severity }}</span></td>
               <td><span class="type-pill" [class]="typeClass(v.type)">{{ v.type }}</span></td>
               <td><code class="cve-code">{{ v.cve || '—' }}</code></td>
-              <td class="desc-cell">{{ v.description | slice:0:80 }}{{ (v.description ? v.description.length : 0) > 80 ? '…' : '' }}</td>
+              <td class="desc-cell">{{ v.description | slice:0:80 }}{{ (v.description?.length || 0) > 80 ? '…' : '' }}</td>
               <td class="path-cell">{{ v.filePath | slice:0:50 }}</td>
             </tr>
           </tbody>

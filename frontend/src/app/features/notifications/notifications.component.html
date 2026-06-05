@@ -1,13 +1,12 @@
 <div class="page">
-
+ 
   <div class="page-header">
     <div>
       <h1>Notifications</h1>
-      <p>
-        {{ counts().all }} notification{{ counts().all !== 1 ? 's' : '' }}
-        <span *ngIf="counts().failed > 0" class="err-count">
-          &mdash; {{ counts().failed }} envoi{{ counts().failed !== 1 ? 's' : '' }} échoué{{ counts().failed !== 1 ? 's' : '' }}
-        </span>
+      <p>{{ counts().all }} notification{{ counts().all !== 1 ? 's' : '' }}
+         <span *ngIf="counts().failed > 0" class="err-count">
+           &mdash; {{ counts().failed }} échec{{ counts().failed !== 1 ? 's' : '' }}
+         </span>
       </p>
     </div>
     <button class="btn-refresh" (click)="load()" title="Rafraîchir">
@@ -18,77 +17,43 @@
       </svg>
     </button>
   </div>
-
+ 
   <!-- Filters -->
   <div class="filter-bar">
-    <button *ngFor="let f of filters" class="filter-btn"
-            [class.active]="filter() === f.key" (click)="setFilter(f.key)">
+    <button
+      *ngFor="let f of filters"
+      class="filter-btn"
+      [class.active]="filter() === f.key"
+      (click)="setFilter(f.key)"
+    >
       {{ f.label }}
-      <span class="filter-count" *ngIf="f.key === 'ALL' && counts().all > 0">{{ counts().all }}</span>
+      <span class="filter-count" *ngIf="f.key === 'ALL'">{{ counts().all }}</span>
       <span class="filter-count red" *ngIf="f.key === 'FAILED' && counts().failed > 0">{{ counts().failed }}</span>
     </button>
   </div>
-
+ 
   <!-- Loading -->
   <div *ngIf="loading()" class="loading-state">
-    <div class="spinner"></div> Chargement...
+    <div class="spinner"></div>
+    Chargement...
   </div>
-
-  <!-- Error -->
-  <div *ngIf="error() && !loading()" class="error-state">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e74c3c" stroke-width="2">
-      <circle cx="12" cy="12" r="10"/>
-      <line x1="12" y1="8" x2="12" y2="12"/>
-      <line x1="12" y1="16" x2="12.01" y2="16"/>
-    </svg>
-    {{ error() }}
-    <button class="btn-refresh" (click)="load()" style="margin-left:8px">Réessayer</button>
-  </div>
-
-  <!-- Notification list -->
-  <div *ngIf="!loading() && !error()" class="notif-list">
-
+ 
+  <!-- List -->
+  <div *ngIf="!loading()" class="notif-list">
+ 
     <div *ngFor="let n of filtered()" class="notif-card"
-         [class.outcome-success]="isSuccess(n.eventType)"
-         [class.outcome-failed]="!isSuccess(n.eventType)">
-
-      <!-- Pipeline outcome icon -->
-      <div class="outcome-icon" [class.success]="isSuccess(n.eventType)"
-                                [class.failure]="!isSuccess(n.eventType)">
-        <svg *ngIf="isSuccess(n.eventType)" width="18" height="18" viewBox="0 0 24 24"
-             fill="none" stroke="currentColor" stroke-width="3">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
-        <svg *ngIf="!isSuccess(n.eventType)" width="18" height="18" viewBox="0 0 24 24"
-             fill="none" stroke="currentColor" stroke-width="3">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
+         [class.sent]="n.status === 'SENT'"
+         [class.failed]="n.status === 'FAILED'"
+         [class.pending]="n.status === 'PENDING'">
+ 
+      <!-- Left: icon -->
+      <div class="notif-icon" [ngClass]="iconColorClass(n.eventType)">
+        {{ iconFor(n.eventType) }}
       </div>
-
-      <!-- Main content -->
+ 
+      <!-- Center: content -->
       <div class="notif-body">
-
-        <!-- Top row: event label + channel + email delivery badge -->
-        <div class="notif-top-row">
-          <span class="event-label" [class.success]="isSuccess(n.eventType)"
-                                    [class.failure]="!isSuccess(n.eventType)">
-            {{ labelFor(n.eventType) }}
-          </span>
-          <div class="notif-badges">
-            <span class="channel-badge">{{ n.channel }}</span>
-            <!-- Delivery status — deliberately understated so it doesn't look like pipeline result -->
-            <span class="delivery-badge" [class.sent]="n.status === 'SENT'"
-                                         [class.failed]="n.status === 'FAILED'"
-                                         [class.pending]="n.status === 'PENDING'"
-                  [title]="n.status === 'FAILED' ? 'L\'email n\'a pas pu être envoyé (serveur mail non configuré)' :
-                           n.status === 'SENT'   ? 'Notification enregistrée' : 'En attente d\'envoi'">
-              {{ n.status === 'SENT' ? '✓ Notifié' : n.status === 'FAILED' ? 'Email non envoyé' : 'En attente' }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Recipient -->
+        <div class="notif-type">{{ n.eventType }}</div>
         <div class="notif-recip">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="2">
@@ -97,18 +62,27 @@
           </svg>
           {{ n.recipient }}
         </div>
-
-        <!-- Message -->
         <div class="notif-msg">
-          {{ n.message ? (n.message | slice:0:120) : '' }}{{ (n.message ? n.message.length : 0) > 120 ? '…' : '' }}
+          {{ n.message | slice:0:120 }}{{ n.message && n.message.length > 120 ? '…' : '' }}
         </div>
-
-        <!-- Date -->
-        <div class="notif-date">{{ formatDate(n.createdAt) }}</div>
       </div>
+ 
+      <!-- Right: meta -->
+      <div class="notif-meta">
+        <span class="channel-badge" [class.slack]="n.channel === 'SLACK'">
+          {{ n.channel }}
+        </span>
+        <span class="status-badge" [ngClass]="n.status.toLowerCase()">
+          {{ n.status }}
+        </span>
+        <div class="notif-dates">
+          <span>{{ n.createdAt | date:'dd/MM HH:mm' }}</span>
+          <span *ngIf="n.sentAt" class="sent-at">Envoyé {{ n.sentAt | date:'HH:mm' }}</span>
+        </div>
+      </div>
+ 
     </div>
-
-    <!-- Empty state -->
+ 
     <div *ngIf="filtered().length === 0" class="empty-state">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ddd" stroke-width="1.5">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -116,6 +90,6 @@
       </svg>
       <p>Aucune notification pour ce filtre</p>
     </div>
-
+ 
   </div>
 </div>

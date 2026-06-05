@@ -318,3 +318,38 @@ $transition:  all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
  
+// ── Role indicator in topbar ───────────────────────────────────
+.role-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #374151;
+
+  .role-icon { font-size: 14px; line-height: 1; }
+  .role-text { letter-spacing: -0.2px; }
+
+  &[data-role="ADMIN"]   { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+  &[data-role="DEV"]     { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+  &[data-role="DEVOPS"]  { background: #dcfce7; color: #166534; border-color: #86efac; }
+  &[data-role="AUDITOR"] { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+}
+
+// ── Role pill in user-role ─────────────────────────────────────
+.user-role {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255,255,255,.25);
+
+  &[data-role="ADMIN"]   { color: #c4b5fd; }
+  &[data-role="DEV"]     { color: #93c5fd; }
+  &[data-role="DEVOPS"]  { color: #86efac; }
+  &[data-role="AUDITOR"] { color: #fcd34d; }
+}

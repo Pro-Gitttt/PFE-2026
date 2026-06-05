@@ -2,130 +2,113 @@
 
   <div class="page-header">
     <div>
-      <h2>Administration des utilisateurs</h2>
-      <p class="subtitle">Gérez tous les utilisateurs de la plateforme</p>
+      <h2>👑 Administration</h2>
+      <p class="subtitle">Gestion des utilisateurs — comptes actifs & bloqués</p>
+    </div>
+    <button class="btn-refresh" (click)="loadUsers()" [disabled]="loading()">↺ Actualiser</button>
+  </div>
+
+  <!-- KPI row -->
+  <div class="kpi-row">
+    <div class="kpi-card kpi-total">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-body"><div class="kpi-val">{{ totalUsers }}</div><div class="kpi-lbl">Total utilisateurs</div></div>
+    </div>
+    <div class="kpi-card kpi-active">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-body"><div class="kpi-val">{{ activeUsers }}</div><div class="kpi-lbl">Comptes actifs</div></div>
+    </div>
+    <div class="kpi-card kpi-blocked">
+      <div class="kpi-icon">🚫</div>
+      <div class="kpi-body"><div class="kpi-val">{{ disabledUsers }}</div><div class="kpi-lbl">Comptes bloqués</div></div>
+    </div>
+    <div class="kpi-card kpi-admin">
+      <div class="kpi-icon">👑</div>
+      <div class="kpi-body"><div class="kpi-val">{{ adminCount }}</div><div class="kpi-lbl">Admins</div></div>
     </div>
   </div>
 
-  <!-- KPI CARDS -->
-  <div class="kpi-row" *ngIf="!loading()">
-    <div class="kpi-card blue">
-      <div class="kpi-val">{{ totalUsers }}</div>
-      <div class="kpi-label">Total</div>
-    </div>
-    <div class="kpi-card green">
-      <div class="kpi-val">{{ activeUsers }}</div>
-      <div class="kpi-label">Actifs</div>
-    </div>
-    <div class="kpi-card red">
-      <div class="kpi-val">{{ disabledUsers }}</div>
-      <div class="kpi-label">Désactivés</div>
-    </div>
-    <div class="kpi-card orange">
-      <div class="kpi-val">{{ adminCount > 0 ? (activeUsers / totalUsers * 100 | number:'1.0-0') + '%' : '0%' }}</div>
-      <div class="kpi-label">Taux d'activité</div>
-    </div>
-  </div>
+  <div class="error-msg" *ngIf="error()">{{ error() }}</div>
+  <div class="loading-msg" *ngIf="loading()">Chargement...</div>
 
-  <!-- ERROR -->
-  <div class="alert-error" *ngIf="error()">{{ error() }}</div>
-
-  <!-- LOADING -->
-  <div class="loading-state" *ngIf="loading()">
-    <div class="spinner"></div>
-    <p>Chargement des utilisateurs...</p>
-  </div>
-
-  <!-- TABLE -->
-  <div class="table-card" *ngIf="!loading()">
-    <div class="table-header">
-      <h3>Liste des utilisateurs <span class="count">{{ totalUsers }}</span></h3>
+  <!-- ══ Section 1: Comptes Actifs ══ -->
+  <ng-container *ngIf="!loading()">
+    <div class="section-title-row">
+      <span class="section-dot dot-active"></span>
+      <h3>Comptes Actifs <span class="section-count">{{ activeUsers }}</span></h3>
     </div>
 
-    <div class="table-wrap">
-      <table>
+    <div class="user-table-wrap">
+      <table class="user-table">
         <thead>
-          <tr>
-            <th>Utilisateur</th>
-            <th>Email</th>
-            <th>Rôle</th>
-            <th>Statut</th>
-            <th>Créé le</th>
-            <th>Actions</th>
-          </tr>
+          <tr><th>Utilisateur</th><th>Email</th><th>Rôle</th><th>Inscrit le</th><th>Statut</th><th>Actions</th></tr>
         </thead>
         <tbody>
-          <tr *ngFor="let u of users()" [class.disabled-row]="!u.enabled">
-
-            <!-- Avatar + name -->
-            <td>
-              <div class="user-cell">
-                <div class="avatar" [class.inactive]="!u.enabled">
-                  {{ u.username.slice(0,2).toUpperCase() }}
+          <tr *ngFor="let u of users()" [class.hidden-row]="!u.enabled">
+            <ng-container *ngIf="u.enabled">
+              <td>
+                <div class="user-cell">
+                  <div class="u-avatar" [style.background]="roleColor(u.role)">{{ u.username.slice(0,2).toUpperCase() }}</div>
+                  <div><div class="u-name">{{ u.username }}</div></div>
                 </div>
-                <div>
-                  <div class="username">{{ u.username }}</div>
+              </td>
+              <td class="u-email">{{ u.email }}</td>
+              <td>
+                <select class="role-select" [value]="u.role" (change)="changeRole(u, $any($event.target).value)" [disabled]="updating() === u.id">
+                  <option *ngFor="let r of roles" [value]="r">{{ roleIcon(r) }} {{ r }}</option>
+                </select>
+              </td>
+              <td class="u-date">{{ u.createdAt | date:'dd/MM/yyyy' }}</td>
+              <td><span class="status-pill active">Actif</span></td>
+              <td>
+                <div class="action-btns">
+                  <button class="btn-action btn-block" (click)="toggleEnabled(u)" [disabled]="updating() === u.id" title="Bloquer">🚫 Bloquer</button>
+                  <button class="btn-action btn-del"   (click)="deleteUser(u)"    [disabled]="updating() === u.id" title="Supprimer">🗑️</button>
                 </div>
-              </div>
-            </td>
-
-            <!-- Email -->
-            <td class="email-cell">{{ u.email }}</td>
-
-            <!-- Role dropdown -->
-            <td>
-              <select
-                class="role-select"
-                [value]="u.role"
-                [disabled]="updating() === u.id"
-                (change)="changeRole(u, $any($event.target).value)"
-              >
-                <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
-              </select>
-            </td>
-
-            <!-- Status badge -->
-            <td>
-              <span class="status-badge" [class.active]="u.enabled" [class.inactive]="!u.enabled">
-                {{ u.enabled ? 'ACTIF' : 'INACTIF' }}
-              </span>
-            </td>
-
-            <!-- Created at -->
-            <td class="date-cell">{{ u.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
-
-            <!-- Actions -->
-            <td>
-              <div class="actions">
-                <button
-                  class="btn-toggle"
-                  [class.btn-disable]="u.enabled"
-                  [class.btn-enable]="!u.enabled"
-                  [disabled]="updating() === u.id"
-                  (click)="toggleEnabled(u)"
-                  [title]="u.enabled ? 'Désactiver' : 'Activer'"
-                >
-                  {{ updating() === u.id ? '...' : (u.enabled ? 'Désactiver' : 'Activer') }}
-                </button>
-                <button
-                  class="btn-delete"
-                  [disabled]="updating() === u.id"
-                  (click)="deleteUser(u)"
-                  title="Supprimer"
-                >
-                  🗑
-                </button>
-              </div>
-            </td>
-
+              </td>
+            </ng-container>
           </tr>
+          <tr *ngIf="activeUsers === 0"><td colspan="6" class="empty-td">Aucun compte actif</td></tr>
         </tbody>
       </table>
     </div>
 
-    <div class="empty" *ngIf="users().length === 0">
-      <p>Aucun utilisateur trouvé.</p>
+    <!-- ══ Section 2: Comptes Bloqués ══ -->
+    <div class="section-title-row" style="margin-top:28px">
+      <span class="section-dot dot-blocked"></span>
+      <h3>Comptes Bloqués <span class="section-count blocked">{{ disabledUsers }}</span></h3>
     </div>
-  </div>
 
+    <div class="user-table-wrap">
+      <table class="user-table">
+        <thead>
+          <tr><th>Utilisateur</th><th>Email</th><th>Rôle</th><th>Inscrit le</th><th>Statut</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of users()">
+            <ng-container *ngIf="!u.enabled">
+              <td>
+                <div class="user-cell">
+                  <div class="u-avatar blocked-avatar">{{ u.username.slice(0,2).toUpperCase() }}</div>
+                  <div><div class="u-name muted">{{ u.username }}</div></div>
+                </div>
+              </td>
+              <td class="u-email muted">{{ u.email }}</td>
+              <td><span class="role-tag" [style.background]="roleColor(u.role)+'22'" [style.color]="roleColor(u.role)">{{ roleIcon(u.role) }} {{ u.role }}</span></td>
+              <td class="u-date muted">{{ u.createdAt | date:'dd/MM/yyyy' }}</td>
+              <td><span class="status-pill blocked">Bloqué</span></td>
+              <td>
+                <div class="action-btns">
+                  <button class="btn-action btn-activate" (click)="toggleEnabled(u)" [disabled]="updating() === u.id">✅ Activer</button>
+                  <button class="btn-action btn-del"      (click)="deleteUser(u)"    [disabled]="updating() === u.id">🗑️</button>
+                </div>
+              </td>
+            </ng-container>
+          </tr>
+          <tr *ngIf="disabledUsers === 0"><td colspan="6" class="empty-td">Aucun compte bloqué</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </ng-container>
 </div>

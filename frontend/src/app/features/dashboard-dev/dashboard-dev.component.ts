@@ -8,6 +8,18 @@ import { NotificationService } from '../../core/services/notification.service';
 import { AuthService }         from '../../core/services/auth.service';
 import { Project }             from '../../core/models/project.model';
 import { NotificationItem }    from '../../core/models/notification.model';
+import { Pipeline, PipelineExecution } from '../../core/models/pipeline.model';
+import { PipelineService }     from '../../core/services/pipeline.service';
+
+export interface AccountNode {
+  id: string;
+  label: string;
+  type: 'root' | 'group' | 'user';
+  icon: string;
+  color: string;
+  children?: AccountNode[];
+  expanded?: boolean;
+}
 
 @Component({
   selector:    'app-dashboard-dev',
@@ -19,87 +31,122 @@ import { NotificationItem }    from '../../core/models/notification.model';
 export class DashboardDevComponent implements OnInit, OnDestroy {
 
   readonly auth = inject(AuthService);
+  private projSvc    = inject(ProjectService);
+  private notifSvc   = inject(NotificationService);
+  private pipelineSvc= inject(PipelineService);
 
   projects      = signal<Project[]>([]);
   notifications = signal<NotificationItem[]>([]);
+  pipelines     = signal<Pipeline[]>([]);
+  executions    = signal<PipelineExecution[]>([]);
   loading       = signal(true);
   lastRefresh   = signal<Date>(new Date());
+  today         = new Date();
+
+  // Rocket deploy animation state
+  deployAnimating = signal(false);
+  deploySuccess   = signal<boolean | null>(null);
 
   private pollSub?: Subscription;
 
-  // ── KPIs ──────────────────────────────────────────────────────
+  // ── KPIs ─────────────────────────────────────────────────────
   readonly kpis = computed(() => {
-    const n = this.notifications();
-    const p = this.projects();
+    const n = this.notifications(), p = this.projects();
     return {
       projects:  p.length,
+      active:    p.filter(x => !x.status || x.status === 'ACTIVE').length,
       succeeded: n.filter(x => x.eventType === 'PIPELINE_SUCCESS').length,
       failed:    n.filter(x => x.eventType === 'PIPELINE_FAILED').length,
       blocked:   n.filter(x => x.eventType === 'SECURITY_BLOCKED').length,
       total:     n.length,
+      pipelines: this.pipelines().length,
     };
   });
 
-  readonly successRate = computed((): number => {
-    const k = this.kpis();
-    const t = k.succeeded + k.failed;
+  readonly successRate = computed(() => {
+    const k = this.kpis(), t = k.succeeded + k.failed;
     return t === 0 ? 100 : Math.round((k.succeeded / t) * 100);
   });
 
-  readonly passedTests = computed(() => this.kpis().succeeded);
-  readonly failedTests = computed(() => this.kpis().failed);
-  readonly totalTests  = computed(() => this.kpis().succeeded + this.kpis().failed);
+  // ── Donut circle values ───────────────────────────────────────
+  readonly donutR    = 42;
+  readonly donutCirc = computed(() => 2 * Math.PI * this.donutR);
+  readonly donutOffset = computed(() => this.donutCirc() * (1 - this.successRate() / 100));
 
-  // ── Build history (last 5 notifs) ─────────────────────────────
+  // ── Recent build history ──────────────────────────────────────
   readonly buildHistory = computed(() =>
     [...this.notifications()]
+      .filter(n => ['PIPELINE_SUCCESS','PIPELINE_FAILED','DEPLOYMENT_FAILED'].includes(n.eventType))
+      .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
+      .slice(0, 8)
+  );
+
+  // ── Pipeline stage tree (last execution per pipeline) ─────────
+  readonly pipelineStageTree = computed(() =>
+    this.pipelines().slice(0, 6).map(p => {
+      const execs = this.executions().filter(e => e.pipelineId === p.id);
+      const last  = execs.sort((a, b) => new Date(b.startTime ?? 0).getTime() - new Date(a.startTime ?? 0).getTime())[0];
+      return { pipeline: p, lastExec: last ?? null };
+    })
+  );
+
+  // ── Notification feed ─────────────────────────────────────────
+  readonly notifFeed = computed(() =>
+    [...this.notifications()]
+      .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
+      .slice(0, 10)
+  );
+
+  // ── Account tree ──────────────────────────────────────────────
+  readonly accountTree = signal<AccountNode[]>([
+    {
+      id: 'root', label: 'Organisation STB', type: 'root', icon: '🏢', color: '#6366f1', expanded: true,
+      children: [
+        {
+          id: 'admins', label: 'Administrateurs', type: 'group', icon: '👑', color: '#7c3aed', expanded: true,
+          children: [
+            { id: 'a1', label: 'rayen',  type: 'user', icon: '👤', color: '#8b5cf6' },
+            { id: 'a2', label: 'khaled', type: 'user', icon: '👤', color: '#8b5cf6' },
+            { id: 'a3', label: 'dalila', type: 'user', icon: '👤', color: '#8b5cf6' },
+          ]
+        },
+        {
+          id: 'devops', label: 'Équipe DevOps', type: 'group', icon: '⚙️', color: '#059669', expanded: false,
+          children: [
+            { id: 'd1', label: 'devops_user1', type: 'user', icon: '👤', color: '#10b981' },
+          ]
+        },
+        {
+          id: 'devs', label: 'Développeurs', type: 'group', icon: '💻', color: '#2563eb', expanded: false,
+          children: [
+            { id: 'dev1', label: 'dev_user1', type: 'user', icon: '👤', color: '#3b82f6' },
+            { id: 'dev2', label: 'dev_user2', type: 'user', icon: '👤', color: '#3b82f6' },
+          ]
+        },
+      ]
+    }
+  ]);
+
+  // ── Recent projects ───────────────────────────────────────────
+  readonly recentProjects = computed(() =>
+    [...this.projects()]
       .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
       .slice(0, 5)
   );
-
-  // ── Project lookup ────────────────────────────────────────────
-  readonly projectMap = computed(() => {
-    const map: Record<number, string> = {};
-    this.projects().forEach(p => { map[p.id] = p.name; });
-    return map;
-  });
-
-  // ── Test rate per stage (simulated from notif data) ───────────
-  readonly stageRates = computed(() => [
-    { name: 'Build',  rate: this.successRate(), prev: Math.max(0, this.successRate() - 5) },
-    { name: 'Tests',  rate: this.successRate(), prev: Math.max(0, this.successRate() - 3) },
-    { name: 'Sonar',  rate: Math.min(100, this.successRate() + 5), prev: this.successRate() },
-    { name: 'Deploy', rate: this.kpis().failed === 0 ? 100 : this.successRate(), prev: this.successRate() },
-  ]);
-
-  // ── Progress bar width for donut alternative ──────────────────
-  readonly passArcR  = 40;
-  readonly donutCirc = computed(() => 2 * Math.PI * this.passArcR);
-  readonly passOffset = computed(() =>
-    this.donutCirc() * (1 - this.successRate() / 100)
-  );
-
-  constructor(
-    private projSvc:  ProjectService,
-    private notifSvc: NotificationService,
-  ) {}
 
   ngOnInit(): void {
     this.loadAll();
     this.pollSub = interval(30_000).subscribe(() => this.loadAll(false));
   }
-
   ngOnDestroy(): void { this.pollSub?.unsubscribe(); }
 
   loadAll(showLoader = true): void {
     if (showLoader) this.loading.set(true);
-    forkJoin({
-      projects:      this.projSvc.getAll(),
-      notifications: this.notifSvc.getAll(),
-    }).subscribe({
+    forkJoin({ projects: this.projSvc.getAll(), notifications: this.notifSvc.getAll() }).subscribe({
       next: ({ projects, notifications }) => {
         this.projects.set(projects);
         this.notifications.set(notifications);
+        this.loadPipelinesAndExecs(projects);
         this.loading.set(false);
         this.lastRefresh.set(new Date());
       },
@@ -107,31 +154,94 @@ export class DashboardDevComponent implements OnInit, OnDestroy {
     });
   }
 
-  projectName(id: number): string {
-    return this.projectMap()[id] ?? `Projet #${id}`;
+  private loadPipelinesAndExecs(projects: Project[]): void {
+    if (!projects.length) return;
+    const allPipes: Pipeline[] = []; let done = 0;
+    projects.forEach(p => {
+      this.projSvc.getPipelines(p.id).subscribe({
+        next: pipes => {
+          allPipes.push(...pipes); done++;
+          if (done === projects.length) {
+            this.pipelines.set(allPipes);
+            this.loadExecutions(allPipes);
+          }
+        },
+        error: () => { done++; if (done === projects.length) this.pipelines.set(allPipes); },
+      });
+    });
+  }
+
+  private loadExecutions(pipes: Pipeline[]): void {
+    if (!pipes.length) return;
+    const allExecs: PipelineExecution[] = []; let done = 0;
+    pipes.slice(0, 6).forEach(p => {
+      this.pipelineSvc.getExecutions(p.id).subscribe({
+        next: execs => { allExecs.push(...execs); done++; if (done === Math.min(6, pipes.length)) this.executions.set(allExecs); },
+        error: () => { done++; if (done === Math.min(6, pipes.length)) this.executions.set(allExecs); },
+      });
+    });
+  }
+
+  // ── Rocket deployment trigger ─────────────────────────────────
+  triggerRocketDeploy(project: Project): void {
+    if (this.deployAnimating()) return;
+    this.deployAnimating.set(true);
+    this.deploySuccess.set(null);
+    // Simulate deploy then show result
+    setTimeout(() => {
+      this.deployAnimating.set(false);
+      this.deploySuccess.set(true);
+      setTimeout(() => this.deploySuccess.set(null), 3000);
+    }, 2500);
+  }
+
+  // ── Account tree toggle ───────────────────────────────────────
+  toggleNode(node: AccountNode): void {
+    node.expanded = !node.expanded;
+    this.accountTree.update(t => [...t]);
+  }
+
+  // ── Stage status helpers ──────────────────────────────────────
+  stageStatusClass(status: string): string {
+    if (status === 'SUCCESS')  return 'stage-ok';
+    if (status === 'FAILED')   return 'stage-fail';
+    if (status === 'RUNNING')  return 'stage-run';
+    if (status === 'CANCELLED')return 'stage-cancel';
+    return 'stage-pending';
+  }
+  stageStatusIcon(status: string): string {
+    if (status === 'SUCCESS')   return '✓';
+    if (status === 'FAILED')    return '✕';
+    if (status === 'RUNNING')   return '⟳';
+    if (status === 'CANCELLED') return '⊘';
+    return '○';
   }
 
   buildStatusClass(type: string): string {
-    if (type === 'PIPELINE_SUCCESS') return 'status-success';
-    if (type === 'PIPELINE_FAILED' || type === 'DEPLOYMENT_FAILED') return 'status-failed';
-    return 'status-abandoned';
+    if (type === 'PIPELINE_SUCCESS') return 'build-ok';
+    if (type === 'PIPELINE_FAILED' || type === 'DEPLOYMENT_FAILED') return 'build-fail';
+    return 'build-warn';
   }
-
   buildStatusLabel(type: string): string {
     if (type === 'PIPELINE_SUCCESS') return 'RÉUSSI';
     if (type === 'PIPELINE_FAILED')  return 'ÉCHEC';
-    if (type === 'DEPLOYMENT_FAILED') return 'ÉCHEC DÉPL.';
-    return 'ABANDONNÉ';
+    if (type === 'DEPLOYMENT_FAILED') return 'DÉPL. ÉCHOUÉ';
+    return 'INFO';
   }
 
-  timeAgo(dateStr: string | null): string {
+  eventIcon(type: string): string {
+    const m: Record<string,string> = { PIPELINE_SUCCESS:'✓', PIPELINE_FAILED:'✕', DEPLOYMENT_FAILED:'⊗', SECURITY_BLOCKED:'🛡', SECURITY_WARNING:'⚠', UPDATE_PROJECT:'↻' };
+    return m[type] ?? '•';
+  }
+  eventLabel(type: string): string {
+    const m: Record<string,string> = { PIPELINE_SUCCESS:'Pipeline réussi', PIPELINE_FAILED:'Pipeline échoué', DEPLOYMENT_FAILED:'Déploiement échoué', SECURITY_BLOCKED:'Alerte sécurité', SECURITY_WARNING:'Avertissement', UPDATE_PROJECT:'Projet mis à jour' };
+    return m[type] ?? type;
+  }
+
+  timeAgo(dateStr: string | null | undefined): string {
     if (!dateStr) return '—';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const m = Math.floor(diff / 60000);
-    if (m < 1)  return 'à l\'instant';
-    if (m < 60) return `il y a ${m}m`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `il y a ${h}h`;
-    return `il y a ${Math.floor(h / 24)}j`;
+    const diff = Date.now() - new Date(dateStr).getTime(), m = Math.floor(diff / 60000);
+    if (m < 1) return 'à l\'instant'; if (m < 60) return `il y a ${m}m`;
+    const h = Math.floor(m / 60); if (h < 24) return `il y a ${h}h`; return `il y a ${Math.floor(h/24)}j`;
   }
 }
