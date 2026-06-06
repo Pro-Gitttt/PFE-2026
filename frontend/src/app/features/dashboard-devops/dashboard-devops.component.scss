@@ -70,3 +70,65 @@
 }
 .empty-panel { padding:24px; text-align:center; color:#9ca3af; font-size:13px; p { margin:0 0 10px; } }
 .btn-sm { display:inline-block; padding:6px 14px; background:#059669; color:#fff; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none; }
+
+// ── Three-col row ──────────────────────────────────────────────
+.three-col-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;
+  @media(max-width:1100px) { grid-template-columns:1fr 1fr; }
+  @media(max-width:700px)  { grid-template-columns:1fr; }
+}
+.sub-label { font-size:11px; color:#9ca3af; }
+.pipes-count { font-size:12px; font-weight:600; color:#059669; }
+
+// ── Refresh small button ───────────────────────────────────────
+.btn-refresh-sm { padding:3px 10px; font-size:11px; font-weight:600; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:6px; color:#374151; cursor:pointer; transition:background .15s;
+  &:hover { background:#e5e7eb; }
+}
+
+// ── Vulnerability bar chart ────────────────────────────────────
+.vuln-legend { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.vleg { font-size:9px; color:#6b7280; }
+.vleg-trivy-crit { color:#dc2626; } .vleg-trivy-high { color:#f87171; }
+.vleg-owasp-crit { color:#d97706; } .vleg-owasp-high { color:#fbbf24; }
+.vleg-sonar-bugs { color:#7c3aed; } .vleg-sonar-vuln { color:#a78bfa; }
+.vuln-chart-wrap { overflow:hidden; height:130px; }
+.vuln-bottom-legend { display:flex; gap:10px; margin-top:6px; }
+.vbot { font-size:10px; }
+.vbot-crit { color:#dc2626; } .vbot-high { color:#d97706; } .vbot-bugs { color:#7c3aed; }
+.vuln-no-data { padding:16px; text-align:center; font-size:12px; color:#9ca3af; }
+
+// ── Build history chart ────────────────────────────────────────
+.build-chart-wrap { height:130px; overflow:hidden; }
+.build-chart-legend { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0; }
+.bcleg { font-size:10px; }
+.bcleg-ok    { color:#16a34a; } .bcleg-fail  { color:#dc2626; }
+.bcleg-tests { color:#2563eb; } .bcleg-sonar { color:#d97706; }
+.build-mini-list { display:flex; flex-direction:column; gap:4px; margin-top:8px; max-height:100px; overflow-y:auto; }
+.build-mini-item { display:flex; align-items:center; gap:8px; font-size:11px; padding:3px 0; border-bottom:1px solid #f3f4f6; }
+.build-mini-dot { font-size:10px; &.dot-ok { color:#16a34a; } &.dot-fail { color:#dc2626; } }
+.build-mini-lbl { font-weight:600; color:#374151; flex:1; }
+.build-mini-cov { color:#9ca3af; font-size:10px; }
+
+// ── Radar / Spider chart ───────────────────────────────────────
+.radar-wrap { display:flex; justify-content:center; padding:4px 0; }
+.radar-scores { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+.rscore { display:flex; flex-direction:column; align-items:center; padding:6px 4px; background:#f9fafb; border-radius:8px; }
+.rscore-lbl { font-size:10px; color:#6b7280; font-weight:600; }
+.rscore-val { font-size:10px; font-weight:700; margin-top:2px;
+  &.health-good { color:#16a34a; }
+  &.health-warn { color:#d97706; }
+  &.health-bad  { color:#dc2626; }
+}
+
+// ── Security alert rows ────────────────────────────────────────
+.sec-error-count { display:flex; align-items:center; gap:8px; margin-bottom:10px; padding:6px 10px; background:#fff5f5; border:1px solid #fecaca; border-radius:8px; }
+.sec-err-badge { font-size:10px; font-weight:700; background:#dc2626; color:#fff; padding:2px 7px; border-radius:4px; }
+.sec-err-text { font-size:12px; color:#dc2626; font-weight:600; }
+.sec-alert-row { width:100%; }
+.sec-alert-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.sec-alert-proj { font-size:12px; font-weight:600; color:#374151; }
+.sec-alert-time { font-size:10px; color:#9ca3af; }
+.sec-alert-tags { display:flex; gap:6px; flex-wrap:wrap; }
+.sec-tag { font-size:10px; font-weight:700; padding:2px 8px; border-radius:4px; }
+.sec-tag-type     { background:#e0e7ff; color:#4338ca; }
+.sec-tag-critical { background:#fee2e2; color:#dc2626; }
+.sec-tag-medium   { background:#fef3c7; color:#d97706; }

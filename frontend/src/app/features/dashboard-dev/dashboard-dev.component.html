@@ -4,9 +4,7 @@
   <div class="page-header">
     <div>
       <h1>Dashboard Développeur</h1>
-      <p>Bienvenue, <strong>{{ auth.username }}</strong>
-        <span class="role-pill">DEV</span>
-      </p>
+      <p>Supervision — Projets, pipelines, tests et qualité du code.</p>
     </div>
     <div class="header-right">
       <span class="refresh-info">{{ lastRefresh() | date:'HH:mm:ss' }}</span>
@@ -34,151 +32,142 @@
         <div class="kpi-body">
           <div class="kpi-value">{{ kpis().projects }}</div>
           <div class="kpi-label">Projets</div>
-          <div class="kpi-sub">{{ kpis().active }} actifs</div>
+          <div class="kpi-sub">{{ kpis().active }} enregistré(s)</div>
         </div>
       </div>
       <div class="kpi-card kpi-green">
         <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
         <div class="kpi-body">
           <div class="kpi-value">{{ kpis().succeeded }}</div>
-          <div class="kpi-label">Builds réussis</div>
-          <div class="kpi-sub">{{ successRate() }}% succès</div>
+          <div class="kpi-label">Déploiements réussis</div>
+          <div class="kpi-sub">{{ kpis().succeeded }} DEPLOYED</div>
         </div>
       </div>
       <div class="kpi-card kpi-red">
-        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
         <div class="kpi-body">
-          <div class="kpi-value">{{ kpis().failed }}</div>
-          <div class="kpi-label">Builds échoués</div>
-          <div class="kpi-sub">{{ kpis().blocked }} alertes sécu.</div>
+          <div class="kpi-value">{{ kpis().blocked }}</div>
+          <div class="kpi-label">Vulnérabilités critiques</div>
+          <div class="kpi-sub">Analysé récemment</div>
         </div>
       </div>
       <div class="kpi-card kpi-purple">
-        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
         <div class="kpi-body">
           <div class="kpi-value">{{ kpis().pipelines }}</div>
-          <div class="kpi-label">Pipelines</div>
-          <div class="kpi-sub">{{ kpis().total }} events total</div>
+          <div class="kpi-label">Temps moyen pipeline</div>
+          <div class="kpi-sub">{{ kpis().total }} pipeline(s) au total</div>
         </div>
       </div>
     </div>
 
-    <!-- ══ ROW 2 — SUCCESS DONUT + ROCKET DEPLOY ════════════════ -->
-    <div class="two-col-row">
+    <!-- ══ ROW 2 — TEST RESULTS + BUILD HISTORY + TEST COVERAGE ══ -->
+    <div class="three-col-row">
 
-      <!-- Build success donut -->
-      <div class="section-card donut-section">
-        <div class="section-header"><h3>Taux de succès global</h3></div>
-        <div class="donut-center-wrap">
-          <svg viewBox="0 0 120 120" width="120" height="120">
-            <circle cx="60" cy="60" [attr.r]="donutR" fill="none" stroke="#f3f4f6" stroke-width="14"/>
-            <circle cx="60" cy="60" [attr.r]="donutR" fill="none"
-                    [attr.stroke]="successRate() >= 70 ? '#16a34a' : successRate() >= 50 ? '#d97706' : '#dc2626'"
-                    stroke-width="14"
-                    [attr.stroke-dasharray]="donutCirc()"
-                    [attr.stroke-dashoffset]="donutOffset()"
-                    transform="rotate(-90 60 60)"
-                    stroke-linecap="round"/>
-            <text x="60" y="55" text-anchor="middle" font-size="20" font-weight="800" fill="#111827">{{ successRate() }}%</text>
-            <text x="60" y="70" text-anchor="middle" font-size="9" fill="#6b7280">Succès</text>
-          </svg>
-          <div class="donut-stats">
-            <div class="dstat"><span class="dstat-dot" style="background:#16a34a"></span><span class="dstat-label">Réussis</span><strong>{{ kpis().succeeded }}</strong></div>
-            <div class="dstat"><span class="dstat-dot" style="background:#dc2626"></span><span class="dstat-label">Échoués</span><strong>{{ kpis().failed }}</strong></div>
-            <div class="dstat"><span class="dstat-dot" style="background:#d97706"></span><span class="dstat-label">Sécurité</span><strong>{{ kpis().blocked }}</strong></div>
+      <!-- Résultats des tests -->
+      <div class="section-card test-results-card">
+        <div class="section-header">
+          <h3>Résultats des tests</h3>
+          <span class="sub-label">Cumul sur tous les builds</span>
+        </div>
+
+        <div class="test-rate-row">
+          <span class="test-rate-label">TAUX DE SUCCÈS</span>
+          <span class="test-rate-value" [class.rate-good]="testResults().rate>=70" [class.rate-bad]="testResults().rate<50">
+            {{ testResults().rate }}%
+          </span>
+        </div>
+        <div class="test-progress-bar">
+          <div class="test-progress-fill"
+               [style.width.%]="testResults().rate"
+               [class.fill-good]="testResults().rate>=70"
+               [class.fill-med]="testResults().rate>=50 && testResults().rate<70"
+               [class.fill-bad]="testResults().rate<50">
+          </div>
+        </div>
+        <div class="test-fraction">{{ testResults().passed }} / {{ testResults().total }} tests passés</div>
+
+        <div class="test-counts">
+          <div class="tcount tcount-pass">
+            <div class="tcount-num">{{ testResults().passed }}</div>
+            <div class="tcount-lbl">Passés</div>
+          </div>
+          <div class="tcount tcount-fail">
+            <div class="tcount-num">{{ testResults().failed }}</div>
+            <div class="tcount-lbl">Échoués</div>
+          </div>
+          <div class="tcount tcount-skip">
+            <div class="tcount-num">{{ testResults().ignored }}</div>
+            <div class="tcount-lbl">Ignorés</div>
           </div>
         </div>
 
-        <!-- Build history mini list -->
-        <div class="build-history-title">Historique des builds</div>
+        <a routerLink="/pipelines" class="btn-analysis">Voir l'analyse complète</a>
+      </div>
+
+      <!-- Historique des builds -->
+      <div class="section-card">
+        <div class="section-header">
+          <h3>Historique des builds</h3>
+          <span class="sub-label">5 derniers builds analysés</span>
+        </div>
         <div class="build-list">
           <div class="build-item" *ngFor="let n of buildHistory()">
             <span class="build-status-dot" [ngClass]="buildStatusClass(n.eventType)">
               {{ n.eventType==='PIPELINE_SUCCESS' ? '✓' : '✕' }}
             </span>
             <div class="build-info">
-              <div class="build-proj">Projet #{{ n.projectId || '—' }}</div>
-              <div class="build-msg">{{ n.message | slice:0:42 }}{{ (n.message?.length ?? 0)>42?'…':'' }}</div>
+              <div class="build-proj">{{ n.message | slice:0:28 }}{{ (n.message?.length ?? 0)>28?'…':'' }}</div>
+              <div class="build-msg">Build #{{ n.projectId || '—' }} · {{ timeAgo(n.createdAt) }}</div>
             </div>
-            <div class="build-meta">
-              <span class="build-label" [ngClass]="buildStatusClass(n.eventType)">{{ buildStatusLabel(n.eventType) }}</span>
-              <span class="build-time">{{ timeAgo(n.createdAt) }}</span>
-            </div>
+            <span class="build-badge" [ngClass]="buildStatusClass(n.eventType)">
+              {{ buildStatusLabel(n.eventType) }}
+            </span>
           </div>
-          <div class="empty-panel" *ngIf="!buildHistory().length"><p>Aucun build récent</p></div>
+          <div class="empty-panel" *ngIf="!buildHistory().length">
+            <p>Aucun build récent</p>
+          </div>
         </div>
       </div>
 
-      <!-- 🚀 Rocket Deployment Panel -->
-      <div class="section-card rocket-section">
-        <div class="section-header"><h3>🚀 Déploiement rapide</h3></div>
-
-        <!-- Launch pad visual -->
-        <div class="rocket-pad">
-          <div class="rocket-wrap" [class.rocket-launch]="deployAnimating()" [class.rocket-success]="deploySuccess()===true">
-            <svg class="rocket-svg" viewBox="0 0 60 100" fill="none">
-              <!-- Body -->
-              <path d="M30 5 C18 20 14 45 14 60 L46 60 C46 45 42 20 30 5Z" fill="#6366f1"/>
-              <!-- Nose -->
-              <path d="M30 5 C22 15 16 28 14 40 L46 40 C44 28 38 15 30 5Z" fill="#4f46e5"/>
-              <!-- Window -->
-              <circle cx="30" cy="38" r="7" fill="#e0e7ff" stroke="#a5b4fc" stroke-width="2"/>
-              <circle cx="30" cy="38" r="4" fill="#c7d2fe"/>
-              <!-- Wings -->
-              <path d="M14 60 L4 80 L14 75 Z" fill="#818cf8"/>
-              <path d="M46 60 L56 80 L46 75 Z" fill="#818cf8"/>
-              <!-- Flame -->
-              <path class="flame" d="M20 60 C22 72 25 80 30 88 C35 80 38 72 40 60Z" fill="#f59e0b"/>
-              <path class="flame-inner" d="M24 60 C26 70 28 76 30 82 C32 76 34 70 36 60Z" fill="#fde68a"/>
-            </svg>
-          </div>
-
-          <!-- Launch pad base -->
-          <div class="launch-base">
-            <div class="base-bar"></div>
-            <div class="base-legs">
-              <div class="leg"></div><div class="leg"></div><div class="leg"></div>
-            </div>
-          </div>
-
-          <!-- Deploy status overlay -->
-          <div class="deploy-result" *ngIf="deploySuccess()===true">
-            <span class="deploy-result-icon">🎉</span>
-            <span>Déploiement réussi !</span>
-          </div>
+      <!-- Taux de tests par build -->
+      <div class="section-card">
+        <div class="section-header">
+          <h3>Taux de tests</h3>
+          <span class="sub-label">Couverture &amp; santé des stages — dernier build</span>
         </div>
 
-        <!-- Project selector + launch button -->
-        <div class="rocket-controls">
-          <div class="rocket-info" *ngIf="!deployAnimating()">
-            <p class="rocket-hint">Sélectionnez un projet et lancez le déploiement</p>
+        <div class="cov-summary">
+          <div class="cov-row">
+            <span class="cov-lbl">COUV. TESTS (MOY.)</span>
+            <span class="cov-val" [class.cov-zero]="testResults().rate===0">{{ testResults().rate === 0 ? '0%' : testResults().rate + '%' }}</span>
           </div>
-          <div class="rocket-info" *ngIf="deployAnimating()">
-            <div class="launch-progress">
-              <div class="launch-progress-fill"></div>
-            </div>
-            <p class="rocket-hint launching">Déploiement en cours…</p>
+          <div class="cov-diff" [class.cov-zero]="true">0% vs build précédent</div>
+          <div class="cov-row" style="margin-top:8px">
+            <span class="cov-lbl">COUV. SONAR (MOY.)</span>
+            <span class="cov-val cov-zero">{{ testResults().rate === 0 ? '0%' : testResults().rate + '%' }}</span>
           </div>
+          <div class="cov-diff cov-zero">Dernier build : {{ testResults().rate === 0 ? '0.0%' : testResults().rate + '%' }}</div>
+        </div>
 
-          <div class="project-deploy-list">
-            <div class="project-deploy-item" *ngFor="let p of recentProjects()">
-              <div class="pdep-info">
-                <span class="pdep-name">{{ p.name }}</span>
-                <span class="pdep-branch">{{ p.branch }}</span>
-              </div>
-              <button class="btn-launch"
-                      [disabled]="deployAnimating()"
-                      (click)="triggerRocketDeploy(p)">
-                <span *ngIf="!deployAnimating()">🚀 Lancer</span>
-                <span *ngIf="deployAnimating()">⟳ En cours…</span>
-              </button>
-            </div>
-            <div class="empty-panel" *ngIf="!recentProjects().length">
-              <p>Aucun projet disponible</p>
-              <a routerLink="/projects" class="btn-sm">Créer un projet</a>
-            </div>
+        <div class="cov-stages-title">STAGES — BUILD #1</div>
+        <div class="cov-stages-table" *ngIf="buildCoverage().length; else noCoverage">
+          <div class="cov-header-row">
+            <span></span>
+            <span>Bui</span><span>Do</span><span>Te</span><span>Ne</span><span>Deploy</span>
+          </div>
+          <div class="cov-data-row" *ngFor="let b of buildCoverage()">
+            <span class="cov-build-lbl">{{ b.buildNum }}</span>
+            <span class="cov-cell" [ngClass]="stageColClass(b.stages['Build'])">{{ b.stages['Build'] === '—' ? '—' : (b.stages['Build'] === 'SUCCESS' ? '✓' : '✕') }}</span>
+            <span class="cov-cell" [ngClass]="stageColClass(b.stages['Deploy'])">{{ b.stages['Deploy'] === '—' ? '—' : (b.stages['Deploy'] === 'SUCCESS' ? '✓' : '✕') }}</span>
+            <span class="cov-cell" [ngClass]="stageColClass(b.stages['Tests'])">{{ b.stages['Tests'] === '—' ? '—' : (b.stages['Tests'] === 'SUCCESS' ? '✓' : '✕') }}</span>
+            <span class="cov-cell" [ngClass]="stageColClass(b.stages['Nexus'])">{{ b.stages['Nexus'] === '—' ? '—' : (b.stages['Nexus'] === 'SUCCESS' ? '✓' : '✕') }}</span>
+            <span class="cov-cell" [ngClass]="stageColClass(b.stages['OWASP'])">{{ b.stages['OWASP'] === '—' ? '—' : (b.stages['OWASP'] === 'SUCCESS' ? '✓' : '✕') }}</span>
           </div>
         </div>
+        <ng-template #noCoverage>
+          <div class="empty-panel" style="margin-top:12px"><p>Aucune donnée de couverture</p></div>
+        </ng-template>
       </div>
 
     </div>
@@ -189,7 +178,6 @@
         <h3>⚡ Pipelines — Arbre des étapes</h3>
         <a routerLink="/pipelines" class="panel-link">Gérer les pipelines →</a>
       </div>
-
       <div class="pipeline-tree" *ngIf="pipelineStageTree().length; else noPipes">
         <div class="ptree-pipeline" *ngFor="let item of pipelineStageTree()">
           <div class="ptree-header">
@@ -203,8 +191,6 @@
               <span class="ptree-status" [ngClass]="'ps-' + (item.pipeline.status | lowercase)">{{ item.pipeline.status }}</span>
             </div>
           </div>
-
-          <!-- Stage steps chain (from last execution) -->
           <div class="stage-chain" *ngIf="item.lastExec?.stages?.length">
             <div class="stage-step" *ngFor="let s of item.lastExec!.stages; let last=last">
               <div class="stage-node" [ngClass]="stageStatusClass(s.status)">
@@ -214,11 +200,7 @@
               <div class="stage-connector" *ngIf="!last"></div>
             </div>
           </div>
-
-          <!-- No execution yet -->
-          <div class="stage-no-exec" *ngIf="!item.lastExec">
-            <span>Aucune exécution</span>
-          </div>
+          <div class="stage-no-exec" *ngIf="!item.lastExec"><span>Aucune exécution</span></div>
         </div>
       </div>
       <ng-template #noPipes><div class="empty-panel"><p>Aucun pipeline disponible</p><a routerLink="/projects" class="btn-sm">Créer un projet</a></div></ng-template>
@@ -226,25 +208,18 @@
 
     <!-- ══ ROW 4 — ACCOUNT TREE + NOTIFICATIONS ═════════════════ -->
     <div class="two-col-row">
-
-      <!-- Account tree -->
       <div class="section-card">
-        <div class="section-header">
-          <h3>🌲 Arbre des comptes</h3>
-        </div>
+        <div class="section-header"><h3>🌲 Arbre des comptes</h3></div>
         <div class="acc-tree">
           <ng-container *ngTemplateOutlet="treeNode; context: { nodes: accountTree(), depth: 0 }"></ng-container>
         </div>
-
         <ng-template #treeNode let-nodes="nodes" let-depth="depth">
           <div class="tree-item" *ngFor="let node of nodes" [style.padding-left.px]="depth * 18">
             <div class="tree-row" (click)="node.children && toggleNode(node)" [class.tree-clickable]="node.children">
               <span class="tree-toggle" *ngIf="node.children">{{ node.expanded ? '▾' : '▸' }}</span>
               <span class="tree-toggle-spacer" *ngIf="!node.children"></span>
               <span class="tree-icon">{{ node.icon }}</span>
-              <span class="tree-label" [style.color]="node.color" [class.tree-root]="node.type==='root'" [class.tree-group]="node.type==='group'" [class.tree-user]="node.type==='user'">
-                {{ node.label }}
-              </span>
+              <span class="tree-label" [style.color]="node.color" [class.tree-root]="node.type==='root'" [class.tree-group]="node.type==='group'" [class.tree-user]="node.type==='user'">{{ node.label }}</span>
               <span class="tree-count" *ngIf="node.children">{{ node.children.length }}</span>
             </div>
             <ng-container *ngIf="node.expanded && node.children">
@@ -254,7 +229,6 @@
         </ng-template>
       </div>
 
-      <!-- Notifications feed -->
       <div class="section-card">
         <div class="section-header">
           <h3>🔔 Notifications</h3>
@@ -275,7 +249,6 @@
           <div class="empty-panel" *ngIf="!notifFeed().length"><p>Aucune notification</p></div>
         </div>
       </div>
-
     </div>
 
   </ng-container>

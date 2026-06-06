@@ -168,3 +168,63 @@
 
 .empty-panel { padding:20px; text-align:center; color:#9ca3af; font-size:13px; p { margin:0 0 10px; } }
 .btn-sm { display:inline-block; padding:6px 14px; background:#6366f1; color:#fff; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none; }
+
+// ── Three-col row ──────────────────────────────────────────────
+.three-col-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;
+  @media(max-width:1100px) { grid-template-columns:1fr 1fr; }
+  @media(max-width:700px)  { grid-template-columns:1fr; }
+}
+
+// ── Test results card ─────────────────────────────────────────
+.test-results-card { display:flex; flex-direction:column; gap:10px; }
+.sub-label { font-size:11px; color:#9ca3af; }
+.test-rate-row { display:flex; justify-content:space-between; align-items:center; margin-top:4px; }
+.test-rate-label { font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; }
+.test-rate-value { font-size:13px; font-weight:800;
+  &.rate-good { color:#16a34a; }
+  &.rate-bad  { color:#dc2626; }
+  &:not(.rate-good):not(.rate-bad) { color:#d97706; }
+}
+.test-progress-bar { height:8px; background:#f3f4f6; border-radius:4px; overflow:hidden; }
+.test-progress-fill { height:100%; border-radius:4px; transition:width .4s;
+  &.fill-good { background:#16a34a; }
+  &.fill-med  { background:#d97706; }
+  &.fill-bad  { background:#dc2626; }
+}
+.test-fraction { font-size:11px; color:#9ca3af; }
+.test-counts { display:flex; gap:12px; margin-top:4px; }
+.tcount { flex:1; display:flex; flex-direction:column; align-items:center; padding:10px 6px; border-radius:10px; }
+.tcount-num { font-size:22px; font-weight:800; }
+.tcount-lbl { font-size:11px; color:#6b7280; margin-top:2px; }
+.tcount-pass { background:#f0fdf4; .tcount-num { color:#16a34a; } }
+.tcount-fail { background:#fff5f5; .tcount-num { color:#dc2626; } }
+.tcount-skip { background:#f9fafb; .tcount-num { color:#6b7280; } }
+.btn-analysis { display:block; text-align:center; margin-top:8px; padding:8px; background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; border-radius:8px; font-size:12px; font-weight:600; text-decoration:none; transition:background .15s;
+  &:hover { background:#dcfce7; }
+}
+
+// ── Build badge ───────────────────────────────────────────────
+.build-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px; white-space:nowrap;
+  &.build-ok   { background:#dcfce7; color:#16a34a; }
+  &.build-fail { background:#fee2e2; color:#dc2626; }
+  &.build-warn { background:#fef3c7; color:#d97706; }
+}
+
+// ── Coverage / Taux de tests ──────────────────────────────────
+.cov-summary { background:#f9fafb; border:1px solid #f3f4f6; border-radius:8px; padding:10px 12px; margin-bottom:12px; }
+.cov-row { display:flex; justify-content:space-between; align-items:center; }
+.cov-lbl { font-size:10px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.4px; }
+.cov-val { font-size:13px; font-weight:800; color:#374151; }
+.cov-zero { color:#9ca3af !important; }
+.cov-diff { font-size:11px; color:#9ca3af; margin-top:2px; }
+.cov-stages-title { font-size:10px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+.cov-header-row, .cov-data-row { display:grid; grid-template-columns:50px repeat(5,1fr); gap:4px; align-items:center; margin-bottom:4px; }
+.cov-header-row { font-size:10px; color:#9ca3af; font-weight:600; text-align:center; }
+.cov-build-lbl { font-size:11px; color:#6b7280; font-weight:600; }
+.cov-cell { text-align:center; font-size:11px; font-weight:700; padding:3px 0; border-radius:4px;
+  &.cov-ok      { background:#dcfce7; color:#16a34a; }
+  &.cov-fail    { background:#fee2e2; color:#dc2626; }
+  &.cov-run     { background:#fef3c7; color:#d97706; }
+  &.cov-na      { background:#f3f4f6; color:#9ca3af; }
+  &.cov-pending { background:#f3f4f6; color:#9ca3af; }
+}
