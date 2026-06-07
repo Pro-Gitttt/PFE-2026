@@ -1,58 +1,95 @@
 import { Routes } from '@angular/router';
-import { roleGuard } from '../core/guards/role.guard';
+import { roleGuard }      from '../core/guards/role.guard';
+import { dashboardGuard } from '../core/guards/dashboard.guard';
 
 export const SHELL_ROUTES: Routes = [
-  // ── Role-specific dashboards ────────────────────────────────
+
+  // ── /dashboard → role-based redirect ──────────────────────
   {
     path: 'dashboard',
-    loadComponent: () => import('../features/dashboard/dashboard.component').then(m => m.DashboardComponent),
+    canActivate: [dashboardGuard],
+    loadComponent: () =>
+      import('../features/dashboard/dashboard.component').then(m => m.DashboardComponent),
   },
-  // ── Projects (all 3 roles, but DEV gets different view via component logic) ──
+
+  // ── Dashboard DevOps (DEVOPS + ADMIN) ──────────────────────
+  {
+    path: 'dashboard-devops',
+    canActivate: [roleGuard],
+    data: { roles: ['DEVOPS', 'ADMIN'] },
+    loadComponent: () =>
+      import('../features/dashboard-devops/dashboard-devops.component').then(m => m.DashboardDevopsComponent),
+  },
+
+  // ── Dashboard Développeur (DEV + ADMIN) ───────────────────
+  {
+    path: 'dashboard-developpeur',
+    canActivate: [roleGuard],
+    data: { roles: ['DEV', 'ADMIN'] },
+    loadComponent: () =>
+      import('../features/dashboard-dev/dashboard-dev.component').then(m => m.DashboardDevComponent),
+  },
+
+  // ── Projects (all authenticated roles) ────────────────────
   {
     path: 'projects',
-    loadComponent: () => import('../features/projects/projects.component').then(m => m.ProjectsComponent),
     canActivate: [roleGuard],
     data: { roles: ['ADMIN', 'DEV', 'DEVOPS'] },
+    loadComponent: () =>
+      import('../features/projects/projects.component').then(m => m.ProjectsComponent),
   },
-  // ── Pipelines (shared — embedded in projects for DEV, standalone for ADMIN/DEVOPS) ──
+
+  // ── Pipelines (ADMIN + DEVOPS) ────────────────────────────
   {
     path: 'pipelines',
-    loadComponent: () => import('../features/pipelines/pipelines.component').then(m => m.PipelinesComponent),
     canActivate: [roleGuard],
     data: { roles: ['ADMIN', 'DEVOPS'] },
+    loadComponent: () =>
+      import('../features/pipelines/pipelines.component').then(m => m.PipelinesComponent),
   },
-  // ── Security (ADMIN + DEVOPS only) ──
+
+  // ── Security (ADMIN + DEVOPS) ─────────────────────────────
   {
     path: 'security',
-    loadComponent: () => import('../features/security/security.component').then(m => m.SecurityComponent),
     canActivate: [roleGuard],
     data: { roles: ['ADMIN', 'DEVOPS'] },
+    loadComponent: () =>
+      import('../features/security/security.component').then(m => m.SecurityComponent),
   },
-  // ── Monitoring (ADMIN + DEVOPS only) ──
+
+  // ── Monitoring (ADMIN + DEVOPS) ───────────────────────────
   {
     path: 'monitoring',
-    loadComponent: () => import('../features/monitoring/monitoring.component').then(m => m.MonitoringComponent),
     canActivate: [roleGuard],
     data: { roles: ['ADMIN', 'DEVOPS'] },
+    loadComponent: () =>
+      import('../features/monitoring/monitoring.component').then(m => m.MonitoringComponent),
   },
-  // ── Notifications (all roles) ──
-  {
-    path: 'notifications',
-    loadComponent: () => import('../features/notifications/notifications.component').then(m => m.NotificationsComponent),
+
+  // ── Notifications (all roles) ─────────────────────────────
+  { path: 'notifications',
+    loadComponent: () =>
+      import('../features/notifications/notifications.component').then(m => m.NotificationsComponent),
   },
-  // ── Audit Logs (ADMIN + DEVOPS) ──
+
+  // ── Audit Logs (ADMIN + DEVOPS) ───────────────────────────
   {
     path: 'audit-logs',
-    loadComponent: () => import('../features/audit-logs/audit-logs.component').then(m => m.AuditLogsComponent),
     canActivate: [roleGuard],
     data: { roles: ['ADMIN', 'DEVOPS'] },
+    loadComponent: () =>
+      import('../features/audit-logs/audit-logs.component').then(m => m.AuditLogsComponent),
   },
-  // ── Admin (ADMIN only) ──
+
+  // ── Admin panel (ADMIN only) ──────────────────────────────
   {
     path: 'admin',
-    loadComponent: () => import('../features/admin/admin.component').then(m => m.AdminComponent),
     canActivate: [roleGuard],
     data: { roles: ['ADMIN'] },
+    loadComponent: () =>
+      import('../features/admin/admin.component').then(m => m.AdminComponent),
   },
+
+  // ── Default: redirect to /dashboard (guard handles role split) ─
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 ];

@@ -2,6 +2,7 @@ import { Component, OnInit, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { AuthService } from '../../core/services/auth.service';
 
 export interface AdminUser { id:number; username:string; email:string; role:string; enabled:boolean; createdAt:string; }
 
@@ -15,6 +16,7 @@ export interface AdminUser { id:number; username:string; email:string; role:stri
 export class AdminComponent implements OnInit {
 
   private http = inject(HttpClient);
+  private auth = inject(AuthService);
   private base = `${environment.apiAuth}/admin`;
 
   users    = signal<AdminUser[]>([]);
@@ -45,7 +47,17 @@ export class AdminComponent implements OnInit {
   changeRole(user: AdminUser, newRole: string): void {
     this.updating.set(user.id);
     this.http.put<AdminUser>(`${this.base}/users/${user.id}/role?role=${newRole}`, {}).subscribe({
-      next: updated => { this.users.update(list => list.map(u => u.id === updated.id ? updated : u)); this.updating.set(null); },
+      next: updated => {
+        this.users.update(list => list.map(u => u.id === updated.id ? updated : u));
+        this.updating.set(null);
+        // If the changed user is currently logged in, refresh their session role
+        if (updated.username === this.auth.username) {
+          this.auth.getMe().subscribe({
+            next: me => { this.auth.updateCurrentUserRole(me.role); },
+            error: () => {}
+          });
+        }
+      },
       error: () => this.updating.set(null),
     });
   }
@@ -59,8 +71,8 @@ export class AdminComponent implements OnInit {
     });
   }
 
-  roleColor(role: string): string { return ({ADMIN:'#7c3aed',DEV:'#2563eb',DEVOPS:'#059669',AUDITOR:'#d97706'})[role] ?? '#6b7280'; }
-  roleIcon(role: string):  string { return ({ADMIN:'👑',DEV:'💻',DEVOPS:'🚀',AUDITOR:'🔍'})[role] ?? '👤'; }
+  roleColor(role: string): string { const m: Record<string,string> = {ADMIN:'#7c3aed',DEV:'#2563eb',DEVOPS:'#059669',AUDITOR:'#d97706'}; return m[role] ?? '#6b7280'; }
+  roleIcon(role: string):  string { const m: Record<string,string> = {ADMIN:'👑',DEV:'💻',DEVOPS:'🚀',AUDITOR:'🔍'}; return m[role] ?? '👤'; }
 
   get totalUsers()    { return this.users().length; }
   get activeUsers()   { return this.users().filter(u => u.enabled).length; }

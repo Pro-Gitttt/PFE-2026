@@ -162,7 +162,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   eventIcon(type: string): string {
-    return ({PIPELINE_SUCCESS:'✓',PIPELINE_FAILED:'✕',DEPLOYMENT_FAILED:'⊗',SECURITY_BLOCKED:'🛡',SECURITY_WARNING:'⚠',UPDATE_PROJECT:'↻'})[type as any] ?? '•';
+    const m: Record<string,string> = {PIPELINE_SUCCESS:'✓',PIPELINE_FAILED:'✕',DEPLOYMENT_FAILED:'⊗',SECURITY_BLOCKED:'🛡',SECURITY_WARNING:'⚠',UPDATE_PROJECT:'↻'};
+    return m[type] ?? '•';
   }
   eventColor(type: string): string {
     if (type==='PIPELINE_SUCCESS') return 'green';
@@ -170,7 +171,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return 'orange';
   }
   eventLabel(type: string): string {
-    return ({PIPELINE_SUCCESS:'Pipeline réussi',PIPELINE_FAILED:'Pipeline échoué',DEPLOYMENT_FAILED:'Déploiement échoué',SECURITY_BLOCKED:'Alerte sécurité',SECURITY_WARNING:'Avertissement',UPDATE_PROJECT:'Projet mis à jour'})[type as any] ?? type;
+    const m: Record<string,string> = {PIPELINE_SUCCESS:'Pipeline réussi',PIPELINE_FAILED:'Pipeline échoué',DEPLOYMENT_FAILED:'Déploiement échoué',SECURITY_BLOCKED:'Alerte sécurité',SECURITY_WARNING:'Avertissement',UPDATE_PROJECT:'Projet mis à jour'};
+    return m[type] ?? type;
   }
   timeAgo(dateStr: string): string {
     const m = Math.floor((Date.now()-new Date(dateStr).getTime())/60000);
@@ -179,9 +181,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return `il y a ${Math.floor(h/24)}j`;
   }
   roleColor(role: string): string {
-    return ({ADMIN:'#7c3aed',DEV:'#2563eb',DEVOPS:'#059669',AUDITOR:'#d97706'})[role] ?? '#6b7280';
+    const m: Record<string,string> = {ADMIN:'#7c3aed',DEV:'#2563eb',DEVOPS:'#059669',AUDITOR:'#d97706'};
+    return m[role] ?? '#6b7280';
   }
   roleIcon2(role: string): string {
-    return ({ADMIN:'👑',DEV:'💻',DEVOPS:'🚀',AUDITOR:'🔍'})[role] ?? '👤';
+    const m: Record<string,string> = {ADMIN:'👑',DEV:'💻',DEVOPS:'🚀',AUDITOR:'🔍'};
+    return m[role] ?? '👤';
   }
 }

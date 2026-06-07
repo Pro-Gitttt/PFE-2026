@@ -2,6 +2,8 @@ import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { forkJoin, interval, Subscription } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 import { ProjectService }      from '../../core/services/project.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -37,6 +39,8 @@ export class DashboardDevComponent implements OnInit, OnDestroy {
   private notifSvc    = inject(NotificationService);
   private pipelineSvc = inject(PipelineService);
   private secSvc      = inject(SecurityService);
+  private http        = inject(HttpClient);
+  private adminBase   = `${environment.apiAuth}/admin`;
 
   projects      = signal<Project[]>([]);
   notifications = signal<NotificationItem[]>([]);
@@ -145,35 +149,38 @@ export class DashboardDevComponent implements OnInit, OnDestroy {
       .slice(0, 5)
   );
 
-  // ── Account tree ──────────────────────────────────────────────
-  readonly accountTree = signal<AccountNode[]>([
-    {
+  // ── Account tree (loaded from API) ───────────────────────────
+  readonly accountTree = signal<AccountNode[]>([{
+    id: 'root', label: 'Organisation STB', type: 'root', icon: '🏢', color: '#6366f1', expanded: true,
+    children: [
+      { id: 'admins', label: 'Administrateurs', type: 'group', icon: '👑', color: '#7c3aed', expanded: true, children: [] },
+      { id: 'devops', label: 'Équipe DevOps',   type: 'group', icon: '⚙️', color: '#059669', expanded: false, children: [] },
+      { id: 'devs',   label: 'Développeurs',    type: 'group', icon: '💻', color: '#2563eb', expanded: false, children: [] },
+    ]
+  }]);
+
+  private buildAccountTree(users: {id:number;username:string;role:string;enabled:boolean}[]): void {
+    const make = (u: {id:number;username:string;role:string}, color: string): AccountNode =>
+      ({ id: String(u.id), label: u.username, type: 'user', icon: '👤', color });
+
+    const admins = users.filter(u => u.role === 'ADMIN').map(u => make(u, '#8b5cf6'));
+    const devops = users.filter(u => u.role === 'DEVOPS').map(u => make(u, '#10b981'));
+    const devs   = users.filter(u => u.role === 'DEV').map(u => make(u, '#3b82f6'));
+
+    this.accountTree.set([{
       id: 'root', label: 'Organisation STB', type: 'root', icon: '🏢', color: '#6366f1', expanded: true,
       children: [
-        {
-          id: 'admins', label: 'Administrateurs', type: 'group', icon: '👑', color: '#7c3aed', expanded: true,
-          children: [
-            { id: 'a1', label: 'rayen',  type: 'user', icon: '👤', color: '#8b5cf6' },
-            { id: 'a2', label: 'khaled', type: 'user', icon: '👤', color: '#8b5cf6' },
-            { id: 'a3', label: 'dalila', type: 'user', icon: '👤', color: '#8b5cf6' },
-          ]
-        },
-        {
-          id: 'devops', label: 'Équipe DevOps', type: 'group', icon: '⚙️', color: '#059669', expanded: false,
-          children: [
-            { id: 'd1', label: 'devops_user1', type: 'user', icon: '👤', color: '#10b981' },
-          ]
-        },
-        {
-          id: 'devs', label: 'Développeurs', type: 'group', icon: '💻', color: '#2563eb', expanded: false,
-          children: [
-            { id: 'dev1', label: 'dev_user1', type: 'user', icon: '👤', color: '#3b82f6' },
-            { id: 'dev2', label: 'dev_user2', type: 'user', icon: '👤', color: '#3b82f6' },
-          ]
-        },
+        { id: 'admins', label: 'Administrateurs', type: 'group', icon: '👑', color: '#7c3aed', expanded: true,  children: admins },
+        { id: 'devops', label: 'Équipe DevOps',   type: 'group', icon: '⚙️', color: '#059669', expanded: false, children: devops },
+        { id: 'devs',   label: 'Développeurs',    type: 'group', icon: '💻', color: '#2563eb', expanded: false, children: devs   },
       ]
-    }
-  ]);
+    }]);
+  }
+
+  private loadUsers(): void {
+    this.http.get<{id:number;username:string;role:string;enabled:boolean}[]>(`${this.adminBase}/users`)
+      .subscribe({ next: users => this.buildAccountTree(users), error: () => {} });
+  }
 
   ngOnInit(): void {
     this.loadAll();
@@ -188,6 +195,7 @@ export class DashboardDevComponent implements OnInit, OnDestroy {
         this.projects.set(projects);
         this.notifications.set(notifications);
         this.loadPipelinesAndExecs(projects);
+        this.loadUsers();
         this.loading.set(false);
         this.lastRefresh.set(new Date());
       },

@@ -138,12 +138,12 @@
                       [attr.fill]="b.ok ? '#16a34a' : b.failed ? '#dc2626' : '#d97706'"/>
             </ng-container>
             <!-- test coverage line -->
-            <polyline *ngIf="buildHistoryChart().length > 1"
-              [attr.points]="buildHistoryChart().map((b,i) => (i*(260/(buildHistoryChart().length||1))+12) + ',' + (120-(b.testCov*1.0))).join(' ')"
+            <polyline *ngIf="testCovPoints()"
+              [attr.points]="testCovPoints()"
               fill="none" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="3,2"/>
             <!-- sonar coverage line -->
-            <polyline *ngIf="buildHistoryChart().length > 1"
-              [attr.points]="buildHistoryChart().map((b,i) => (i*(260/(buildHistoryChart().length||1))+12) + ',' + (120-(b.sonarCov*1.0))).join(' ')"
+            <polyline *ngIf="sonarCovPoints()"
+              [attr.points]="sonarCovPoints()"
               fill="none" stroke="#d97706" stroke-width="1.5" stroke-dasharray="3,2"/>
             <line x1="0" y1="120" x2="260" y2="120" stroke="#e5e7eb" stroke-width="0.5"/>
           </svg>
@@ -180,7 +180,7 @@
                   [attr.x1]="90" [attr.y1]="90" [attr.x2]="ax.x" [attr.y2]="ax.y"
                   stroke="#e5e7eb" stroke-width="0.8"/>
             <!-- filled polygon -->
-            <polygon [attr.points]="radarPoints().map(p => p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')"
+            <polygon [attr.points]="radarPointsStr()"
                      fill="rgba(139,92,246,0.18)" stroke="#7c3aed" stroke-width="1.5"/>
             <!-- dots on polygon -->
             <circle *ngFor="let p of radarPoints()" [attr.cx]="p.x" [attr.cy]="p.y" r="3" fill="#7c3aed"/>
@@ -257,7 +257,7 @@
             </div>
             <div class="deploy-info">
               <div class="deploy-project">Projet #{{ n.projectId || '—' }}</div>
-              <div class="deploy-msg">{{ n.message | slice:0:55 }}{{ (n.message?.length ?? 0) > 55 ? '…' : '' }}</div>
+              <div class="deploy-msg">{{ n.message | slice:0:55 }}{{ n.message.length > 55 ? '…' : '' }}</div>
               <div class="deploy-meta">
                 <span class="deploy-branch">{{ n.projectId ? 'proj-'+n.projectId : 'main' }}</span>
                 <span class="deploy-time">{{ timeAgo(n.createdAt) }}</span>
@@ -272,16 +272,16 @@
       </div>
 
       <div *ngIf="projectTab()==='pipelines'">
-        <div class="table-wrap" *ngIf="pipelinesSorted().length; else noPipes">
+        <div class="table-wrap" *ngIf="executions().length; else noPipes">
           <table class="data-table">
             <thead><tr><th>NOM DU PROJET</th><th>DATE DE DÉBUT</th><th>DATE DE FIN</th><th>STATUT</th><th>DÉCLENCHÉ PAR</th></tr></thead>
             <tbody>
-              <tr *ngFor="let p of pipelinesSorted()">
-                <td><strong>{{ p.name }}</strong></td>
-                <td class="muted">{{ p.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
-                <td class="muted">{{ p.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
-                <td><span class="status-pill" [ngClass]="pipelineStatusClass(p.status)">{{ p.status }}</span></td>
-                <td class="muted">{{ p.triggeredBy || auth.username }}</td>
+              <tr *ngFor="let e of executions().slice(0,20)">
+                <td><strong>{{ pipelineName(e.pipelineId) }}</strong></td>
+                <td class="muted">{{ e.startTime | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+                <td class="muted">{{ e.endTime ? (e.endTime | date:'dd/MM/yyyy HH:mm:ss') : 'N/A' }}</td>
+                <td><span class="status-pill" [ngClass]="pipelineStatusClass(e.status)">{{ e.status }}</span></td>
+                <td class="muted">{{ e.triggeredBy || auth.username }}</td>
               </tr>
             </tbody>
           </table>
@@ -303,11 +303,11 @@
           <div class="feed-item" *ngFor="let n of recentNotifs()"
                [class.feed-success]="n.eventType==='PIPELINE_SUCCESS'"
                [class.feed-failed]="n.eventType==='PIPELINE_FAILED' || n.eventType==='DEPLOYMENT_FAILED'"
-               [class.feed-security]="n.eventType?.startsWith('SECURITY')">
+               [class.feed-security]="n.eventType.startsWith('SECURITY')">
             <span class="feed-icon">{{ eventIcon(n.eventType) }}</span>
             <div class="feed-body">
               <div class="feed-type">{{ eventLabel(n.eventType) }}</div>
-              <div class="feed-msg">{{ n.message | slice:0:52 }}{{ (n.message?.length ?? 0)>52?'…':'' }}</div>
+              <div class="feed-msg">{{ n.message | slice:0:52 }}{{ n.message.length>52?'…':'' }}</div>
             </div>
             <span class="feed-time">{{ timeAgo(n.createdAt) }}</span>
           </div>
@@ -339,13 +339,13 @@
           <div class="feed-item feed-security" *ngFor="let n of securityAlerts()">
             <div class="sec-alert-row">
               <div class="sec-alert-top">
-                <span class="sec-alert-proj">{{ n.message | slice:0:30 }}{{ (n.message?.length ?? 0)>30?'…':'' }}</span>
+                <span class="sec-alert-proj">{{ n.message | slice:0:30 }}{{ n.message.length>30?'…':'' }}</span>
                 <span class="sec-alert-time">{{ timeAgo(n.createdAt) }}</span>
               </div>
               <div class="sec-alert-tags">
-                <span class="sec-tag sec-tag-type">{{ n.eventType === 'SECURITY_BLOCKED' ? 'OWASP_DEPENDENCY_CHECK' : 'SONARQUBE' }}</span>
-                <span class="sec-tag" [class.sec-tag-critical]="n.eventType==='SECURITY_BLOCKED'" [class.sec-tag-medium]="n.eventType==='SECURITY_WARNING'">
-                  {{ n.eventType==='SECURITY_BLOCKED' ? 'CRITICAL' : 'MEDIUM' }}
+                <span class="sec-tag sec-tag-type">{{ isSecurityBlocked(n.eventType) ? 'OWASP_DEPENDENCY_CHECK' : 'SONARQUBE' }}</span>
+                <span class="sec-tag" [class.sec-tag-critical]="isSecurityBlocked(n.eventType)" [class.sec-tag-medium]="isSecurityWarning(n.eventType)">
+                  {{ isSecurityBlocked(n.eventType) ? 'CRITICAL' : 'MEDIUM' }}
                 </span>
               </div>
             </div>

@@ -114,7 +114,7 @@
         <tbody>
           <tr *ngFor="let p of projects()">
             <td><strong>{{ p.name }}</strong></td>
-            <td><a [href]="p.repositoryUrl" target="_blank" class="link-cell">{{ p.repositoryUrl | slice:0:35 }}{{ (p.repositoryUrl?.length??0)>35?'…':'' }}</a></td>
+            <td><a [href]="p.repositoryUrl" target="_blank" class="link-cell">{{ p.repositoryUrl | slice:0:35 }}{{ p.repositoryUrl.length>35?'…':'' }}</a></td>
             <td><span class="branch-pill">{{ p.branch }}</span></td>
             <td><span class="vcs-pill">{{ p.vcsType }}</span></td>
             <td>{{ p.owner || p.createdBy }}</td>

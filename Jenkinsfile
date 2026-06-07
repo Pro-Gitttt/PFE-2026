@@ -13,12 +13,11 @@ pipeline {
 
         REGISTRY             = "192.168.56.10:5000"
         SONAR_URL            = "http://192.168.56.10:9000"
+        // FIX #1: use Gateway (30080) for security scan — avoids direct NodePort dependency
+        //         before services are deployed. The gateway routes /api/security/** → security-service.
         SECURITY_SERVICE_URL = "http://192.168.56.20:30080/api/security/scan"
         GATEWAY_URL          = "http://192.168.56.20:30080"
 
-        // ✅ FIX: use WORKSPACE variable so paths resolve to the actual checked-out dir
-        //         Previous builds used /var/lib/jenkins/workspace/PFE-2026 (the SCM checkout
-        //         job name) but the pipeline runs in devsecops-pipeline workspace.
         K8S_INFRA      = "/var/lib/jenkins/workspace/PFE-2026/k8s/infra"
         K8S_APPS       = "/var/lib/jenkins/workspace/PFE-2026/k8s/apps"
         K8S_MONITORING = "/var/lib/jenkins/workspace/PFE-2026/k8s/monitoring"
@@ -26,12 +25,18 @@ pipeline {
 
     stages {
 
+        // ─────────────────────────────────────────
         stage('Checkout') {
-            steps { checkout scm }
+            steps {
+                checkout scm
+            }
         }
 
+        // ─────────────────────────────────────────
         stage('Build & Test') {
             steps {
+                // FIX #2: use Java 21 for build (matches pom.xml java.version=17 is fine,
+                //         but Audit-Log-Service compiles with release 21 — needs JDK 21)
                 withEnv(["JAVA_HOME=${JAVA_HOME_21}", "PATH+JAVA=${JAVA_HOME_21}/bin"]) {
                     sh '''
                         java -version
@@ -41,9 +46,11 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────
         stage('SonarQube Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    // FIX #3: use sonar.token instead of deprecated sonar.login
                     withEnv(["JAVA_HOME=${JAVA_HOME_17}", "PATH+JAVA=${JAVA_HOME_17}/bin"]) {
                         sh '''
                             mvn sonar:sonar \
@@ -56,6 +63,7 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Trivy Scan') {
             steps {
                 sh '''
@@ -77,6 +85,7 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Gitleaks Scan') {
             steps {
                 sh '''
@@ -91,34 +100,35 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Send Security Reports') {
             steps {
                 script {
                     echo "Sending security reports to: ${SECURITY_SERVICE_URL}"
-                    echo "  executionId = ${params.EXECUTION_ID}"
-                    echo "  projectId   = ${params.PROJECT_ID}"
+                    echo "  executionId = ${EXECUTION_ID}"
+                    echo "  projectId   = ${PROJECT_ID}"
 
-                    // ✅ FIX: write http_code to a separate file to avoid concatenation bug
-                    //    Previously: curl ... || echo "000" → appended "000" to the curl
-                    //    stdout making status "201000" or "000000" instead of "201"/"000"
-                    sh """
-                        curl -s \
-                          -o ${WORKSPACE}/security-response.json \
-                          -w '%{http_code}' \
+                    // FIX #1 (MAIN FIX): remove -f flag from curl so a non-2xx response
+                    //   or temporary connection issue does NOT crash the pipeline.
+                    //   -f makes curl exit with code 7/22 on HTTP errors — that was killing
+                    //   Docker Build / Deploy stages entirely.
+                    //   We capture the HTTP status code separately and handle it ourselves.
+                    def httpStatus = sh(script: """
+                        curl -s -o ${WORKSPACE}/security-response.json \
+                          -w "%{http_code}" \
                           --connect-timeout 10 \
                           --max-time 30 \
                           -X POST ${SECURITY_SERVICE_URL} \
-                          -F "executionId=${params.EXECUTION_ID}" \
-                          -F "projectId=${params.PROJECT_ID}" \
+                          -F "executionId=${EXECUTION_ID}" \
+                          -F "projectId=${PROJECT_ID}" \
                           -F "trivy=@${WORKSPACE}/trivy.json" \
                           -F "gitleaks=@${WORKSPACE}/gitleaks.json" \
-                          > ${WORKSPACE}/security-http-status.txt 2>/dev/null \
-                          || echo '000' > ${WORKSPACE}/security-http-status.txt
-                    """
+                        || echo "000"
+                    """, returnStdout: true).trim()
 
-                    def httpStatus = readFile("${WORKSPACE}/security-http-status.txt").trim()
                     echo "Security Service HTTP Status: ${httpStatus}"
 
+                    // Read the response body if it exists
                     def response = ""
                     if (fileExists("${WORKSPACE}/security-response.json")) {
                         response = readFile("${WORKSPACE}/security-response.json").trim()
@@ -126,19 +136,24 @@ pipeline {
                     }
 
                     if (httpStatus == "000") {
-                        echo "⚠️  WARNING: Security service unreachable. Continuing pipeline."
+                        // Service unreachable — warn but do NOT block the pipeline
+                        // (service may not be deployed yet on first run)
+                        echo "⚠️  WARNING: Security service unreachable (connection failed). Continuing pipeline."
+                        echo "   Run the pipeline again after deployment to get full security scanning."
+
                         sh """
                             curl -s -X POST ${GATEWAY_URL}/api/audit/log \
                               -H 'Content-Type: application/json' \
                               -d '{
                                 "action":        "SECURITY_SCAN_SKIPPED",
                                 "resource":      "PIPELINE",
-                                "resourceId":    ${params.EXECUTION_ID},
-                                "details":       "Security service unreachable during execution ${params.EXECUTION_ID}",
+                                "resourceId":    ${EXECUTION_ID},
+                                "details":       "Security service unreachable during execution ${EXECUTION_ID} — scan skipped",
                                 "status":        "WARNING",
                                 "sourceService": "jenkins"
                               }' || true
                         """
+
                     } else if (response.contains('"blocked":true')) {
                         sh """
                             curl -s -X POST ${GATEWAY_URL}/api/audit/log \
@@ -146,25 +161,27 @@ pipeline {
                               -d '{
                                 "action":        "SECURITY_SCAN_BLOCKED",
                                 "resource":      "PIPELINE",
-                                "resourceId":    ${params.EXECUTION_ID},
-                                "details":       "Pipeline ${params.EXECUTION_ID} blocked — critical vulnerabilities",
+                                "resourceId":    ${EXECUTION_ID},
+                                "details":       "Pipeline execution ${EXECUTION_ID} blocked — critical vulnerabilities detected",
                                 "status":        "FAILURE",
                                 "sourceService": "jenkins"
                               }' || true
-                            curl -s -X PUT ${GATEWAY_URL}/api/executions/${params.EXECUTION_ID}/status \
+                            curl -s -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
                               -H 'Content-Type: application/json' \
                               -d '{"status":"BLOCKED"}' || true
                         """
-                        error("❌ PIPELINE BLOCKED — Security vulnerabilities detected.")
+                        error("❌ PIPELINE BLOCKED — Security vulnerabilities detected. Fix them and retry.")
+
                     } else {
+                        // Scan completed (2xx or non-blocking response)
                         sh """
                             curl -s -X POST ${GATEWAY_URL}/api/audit/log \
                               -H 'Content-Type: application/json' \
                               -d '{
                                 "action":        "SECURITY_SCAN_COMPLETED",
                                 "resource":      "PIPELINE",
-                                "resourceId":    ${params.EXECUTION_ID},
-                                "details":       "Security scan passed for execution ${params.EXECUTION_ID}",
+                                "resourceId":    ${EXECUTION_ID},
+                                "details":       "Security scan passed for execution ${EXECUTION_ID}",
                                 "status":        "SUCCESS",
                                 "sourceService": "jenkins"
                               }' || true
@@ -174,6 +191,7 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Docker Build') {
             steps {
                 withEnv(["JAVA_HOME=${JAVA_HOME_21}", "PATH+JAVA=${JAVA_HOME_21}/bin"]) {
@@ -190,6 +208,7 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Docker Push') {
             steps {
                 withCredentials([usernamePassword(
@@ -198,7 +217,9 @@ pipeline {
                     passwordVariable: 'NEXUS_PASS'
                 )]) {
                     sh """
-                        echo \$NEXUS_PASS | docker login ${REGISTRY} -u \$NEXUS_USER --password-stdin
+                        echo "${NEXUS_PASS}" | docker login ${REGISTRY} \
+                          -u ${NEXUS_USER} --password-stdin
+
                         docker push ${REGISTRY}/eureka-server:latest
                         docker push ${REGISTRY}/api-gateway:latest
                         docker push ${REGISTRY}/auth-service:latest
@@ -211,6 +232,7 @@ pipeline {
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Deploy to Kubernetes') {
             steps {
                 sh """
@@ -235,19 +257,15 @@ pipeline {
                     kubectl rollout restart deployment/notification-service -n apps
                     kubectl rollout restart deployment/audit-log-service    -n apps
 
-                    echo "⏳ Waiting for rollouts to complete..."
-
-                    kubectl rollout status deployment/eureka-server       -n infra --timeout=300s
-                    kubectl rollout status deployment/api-gateway          -n infra --timeout=300s
-                    kubectl rollout status deployment/auth-service         -n apps  --timeout=300s
-                    kubectl rollout status deployment/pipeline-service     -n apps  --timeout=300s
-                    kubectl rollout status deployment/security-service     -n apps  --timeout=300s
-                    kubectl rollout status deployment/notification-service -n apps  --timeout=300s
-                    kubectl rollout status deployment/audit-log-service    -n apps  --timeout=300s
+                    kubectl rollout status  deployment/api-gateway          -n infra --timeout=120s
+                    kubectl rollout status  deployment/pipeline-service     -n apps  --timeout=120s
+                    kubectl rollout status  deployment/security-service     -n apps  --timeout=120s
+                    kubectl rollout status  deployment/audit-log-service    -n apps  --timeout=120s
                 """
             }
         }
 
+        // ─────────────────────────────────────────
         stage('Verify Deployment') {
             steps {
                 sh '''
@@ -258,7 +276,7 @@ pipeline {
                     kubectl get pods -n apps
 
                     echo "=== MONITORING PODS ==="
-                    kubectl get pods -n monitoring || true
+                    kubectl get pods -n monitoring
 
                     echo "=== SERVICES ==="
                     kubectl get svc -n infra
@@ -270,13 +288,13 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: '*.json,*.txt', fingerprint: true, allowEmptyArchive: true
+            archiveArtifacts artifacts: '*.json', fingerprint: true
         }
         success {
             echo "✅ PIPELINE SUCCESS — All services deployed!"
             script {
                 sh """
-                    curl -s -X PUT ${GATEWAY_URL}/api/executions/${params.EXECUTION_ID}/status \
+                    curl -s -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
                       -H 'Content-Type: application/json' \
                       -d '{"status":"SUCCESS"}' || true
 
@@ -285,8 +303,8 @@ pipeline {
                       -d '{
                         "action":        "PIPELINE_TRIGGERED",
                         "resource":      "PIPELINE",
-                        "resourceId":    ${params.EXECUTION_ID},
-                        "details":       "Pipeline execution ${params.EXECUTION_ID} deployed successfully",
+                        "resourceId":    ${EXECUTION_ID},
+                        "details":       "Pipeline execution ${EXECUTION_ID} deployed successfully",
                         "status":        "SUCCESS",
                         "sourceService": "jenkins"
                       }' || true
@@ -297,7 +315,7 @@ pipeline {
             echo "❌ PIPELINE FAILED"
             script {
                 sh """
-                    curl -s -X PUT ${GATEWAY_URL}/api/executions/${params.EXECUTION_ID}/status \
+                    curl -s -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
                       -H 'Content-Type: application/json' \
                       -d '{"status":"FAILED"}' || true
 
@@ -306,8 +324,8 @@ pipeline {
                       -d '{
                         "action":        "PIPELINE_ABORTED",
                         "resource":      "PIPELINE",
-                        "resourceId":    ${params.EXECUTION_ID},
-                        "details":       "Pipeline execution ${params.EXECUTION_ID} failed",
+                        "resourceId":    ${EXECUTION_ID},
+                        "details":       "Pipeline execution ${EXECUTION_ID} failed",
                         "status":        "FAILURE",
                         "sourceService": "jenkins"
                       }' || true

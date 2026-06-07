@@ -159,6 +159,25 @@ export class DashboardDevopsComponent implements OnInit, OnDestroy {
     this.radarPoints().map((p, i) => `${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') + ' Z'
   );
 
+  // ── Precomputed SVG point strings (arrow functions banned in templates) ──
+  readonly radarPointsStr = computed(() =>
+    this.radarPoints().map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')
+  );
+
+  readonly testCovPoints = computed(() => {
+    const chart = this.buildHistoryChart();
+    if (chart.length < 2) return '';
+    const n = chart.length || 1;
+    return chart.map((b, i) => ((i * (260 / n)) + 12).toFixed(1) + ',' + (120 - b.testCov).toFixed(1)).join(' ');
+  });
+
+  readonly sonarCovPoints = computed(() => {
+    const chart = this.buildHistoryChart();
+    if (chart.length < 2) return '';
+    const n = chart.length || 1;
+    return chart.map((b, i) => ((i * (260 / n)) + 12).toFixed(1) + ',' + (120 - b.sonarCov).toFixed(1)).join(' ');
+  });
+
   readonly radarAxes = computed(() => {
     const labels = ['Build','Tests','Sonar','OWASP','Nexus','Deploy'];
     const cx = 90, cy = 90, r = 70;
@@ -307,6 +326,13 @@ export class DashboardDevopsComponent implements OnInit, OnDestroy {
     if (s === 'SUCCESS') return 'st-success'; if (s === 'FAILED') return 'st-failed'; if (s === 'RUNNING') return 'st-running'; return 'st-pending';
   }
   logStatusClass(s: string): string { return s === 'SUCCESS' ? 'log-success' : s === 'FAILURE' ? 'log-fail' : 'log-info'; }
+  pipelineName(pipelineId: number): string {
+    return this.pipelines().find(p => p.id === pipelineId)?.name ?? 'Pipeline #' + pipelineId;
+  }
+
+  isSecurityBlocked(type: string): boolean { return type === 'SECURITY_BLOCKED'; }
+  isSecurityWarning(type: string): boolean  { return type === 'SECURITY_WARNING'; }
+
   timeAgo(dateStr: string | null | undefined): string {
     if (!dateStr) return '—';
     const diff = Date.now() - new Date(dateStr).getTime(), m = Math.floor(diff / 60000);

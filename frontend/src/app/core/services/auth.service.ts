@@ -50,11 +50,27 @@ export class AuthService {
 
   private restoreSession(): void {
     if (!isPlatformBrowser(this.platformId)) return;
-
     const user = this.read('currentUser');
     if (user) {
       this._currentUser.set(JSON.parse(user));
+      // Refresh role from server in background so it's always up-to-date
+      this.refreshRoleFromServer();
     }
+  }
+
+  /** Calls /me and updates stored role if it changed (e.g. admin changed your role). */
+  private refreshRoleFromServer(): void {
+    this.getMe().subscribe({
+      next: (me) => {
+        const current = this._currentUser();
+        if (current && me.role !== current.role) {
+          const updated = { ...current, role: me.role };
+          this.write('currentUser', JSON.stringify(updated));
+          this._currentUser.set(updated);
+        }
+      },
+      error: () => { /* silently ignore — offline or token expired */ }
+    });
   }
 
   // ================= AUTH API (FIXED) =================
@@ -104,6 +120,16 @@ export class AuthService {
 
   get role(): string {
     return this._currentUser()?.role ?? '';
+  }
+
+  // ================= UPDATE ROLE =================
+  /** Called when admin changes a user's role while they're logged in. */
+  updateCurrentUserRole(newRole: string): void {
+    const cur = this._currentUser();
+    if (!cur) return;
+    const updated = { ...cur, role: newRole };
+    this.write('currentUser', JSON.stringify(updated));
+    this._currentUser.set(updated);
   }
 
   // ================= SAVE SESSION =================

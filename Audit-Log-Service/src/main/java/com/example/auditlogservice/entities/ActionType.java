@@ -26,9 +26,7 @@ public enum ActionType {
     SECURITY_SCAN_TRIGGERED,
     SECURITY_SCAN_COMPLETED,
     SECURITY_SCAN_BLOCKED,
-    SECURITY_SCAN_SKIPPED,    // ✅ ADDED — sent when security service is unreachable
 
     // System
-    SYSTEM_EVENT,
-    UPDATE_PROJECT             // ✅ ADDED — used by frontend notifications
+    SYSTEM_EVENT
 }

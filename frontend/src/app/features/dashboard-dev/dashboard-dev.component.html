@@ -117,7 +117,7 @@
               {{ n.eventType==='PIPELINE_SUCCESS' ? '✓' : '✕' }}
             </span>
             <div class="build-info">
-              <div class="build-proj">{{ n.message | slice:0:28 }}{{ (n.message?.length ?? 0)>28?'…':'' }}</div>
+              <div class="build-proj">{{ n.message | slice:0:28 }}{{ n.message.length>28?'…':'' }}</div>
               <div class="build-msg">Build #{{ n.projectId || '—' }} · {{ timeAgo(n.createdAt) }}</div>
             </div>
             <span class="build-badge" [ngClass]="buildStatusClass(n.eventType)">
@@ -238,11 +238,11 @@
           <div class="feed-item" *ngFor="let n of notifFeed()"
                [class.feed-success]="n.eventType==='PIPELINE_SUCCESS'"
                [class.feed-failed]="n.eventType==='PIPELINE_FAILED' || n.eventType==='DEPLOYMENT_FAILED'"
-               [class.feed-security]="n.eventType?.startsWith('SECURITY')">
+               [class.feed-security]="n.eventType.startsWith('SECURITY')">
             <span class="feed-icon">{{ eventIcon(n.eventType) }}</span>
             <div class="feed-body">
               <div class="feed-type">{{ eventLabel(n.eventType) }}</div>
-              <div class="feed-msg">{{ n.message | slice:0:52 }}{{ (n.message?.length ?? 0)>52?'…':'' }}</div>
+              <div class="feed-msg">{{ n.message | slice:0:52 }}{{ n.message.length>52?'…':'' }}</div>
             </div>
             <span class="feed-time">{{ timeAgo(n.createdAt) }}</span>
           </div>

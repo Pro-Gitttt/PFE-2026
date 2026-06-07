@@ -32,7 +32,7 @@ export class ShellComponent {
   ];
 
   private readonly devopsNav: NavItem[] = [
-    { path: '/dashboard',     label: 'Dashboard',        icon: 'grid' },
+    { path: '/dashboard-devops',        label: 'Dashboard',  icon: 'grid' },
     { path: '/projects',      label: 'Projets',           icon: 'folder' },
     { path: '/notifications', label: 'Notifications',     icon: 'bell' },
     { path: '/security',      label: 'Sécurité',          icon: 'shield' },
@@ -41,7 +41,7 @@ export class ShellComponent {
   ];
 
   private readonly devNav: NavItem[] = [
-    { path: '/dashboard',     label: 'Dashboard',        icon: 'grid' },
+    { path: '/dashboard-developpeur',  label: 'Dashboard',  icon: 'grid' },
     { path: '/projects',      label: 'Projets',           icon: 'folder' },
     { path: '/notifications', label: 'Notifications',     icon: 'bell' },
   ];
@@ -62,7 +62,7 @@ export class ShellComponent {
     map(() => {
       const seg = this.router.url.split('/').pop() ?? '';
       return ({
-        dashboard: 'Tableau de bord', projects: 'Projets', pipelines: 'Pipelines',
+        dashboard: 'Tableau de bord', 'dashboard-devops': 'Dashboard DevOps', 'dashboard-developpeur': 'Dashboard Développeur', projects: 'Projets', pipelines: 'Pipelines',
         security: 'Sécurité', monitoring: 'Monitoring', notifications: 'Notifications',
         'audit-logs': 'Audit Logs', admin: 'Administration',
       } as Record<string, string>)[seg] ?? 'DevSecOps STB';
