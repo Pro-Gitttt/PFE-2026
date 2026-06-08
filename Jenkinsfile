@@ -1,9 +1,22 @@
+// ============================================================
+//  STB DevSecOps — Multi-Environment Pipeline
+//
+//  Branch strategy:
+//    dev     → build → test → scan → deploy to k8s/dev    (auto)
+//    staging → build → test → scan → deploy to k8s/staging (auto)
+//    main    → build → test → scan → [manual gate] → prod  (gated)
+//
+//  Ingress URLs:
+//    dev.devsecops.local      ← namespace: dev
+//    staging.devsecops.local  ← namespace: staging
+//    devsecops.local          ← namespace: prod
+// ============================================================
 pipeline {
     agent any
 
     parameters {
-        string(name: 'EXECUTION_ID', defaultValue: '1',    description: 'Pipeline execution ID from the backend')
-        string(name: 'PROJECT_ID',   defaultValue: '1',    description: 'Project ID in the backend database')
+        string(name: 'EXECUTION_ID', defaultValue: '1',    description: 'Pipeline execution ID from backend')
+        string(name: 'PROJECT_ID',   defaultValue: '1',    description: 'Project ID in backend database')
         string(name: 'COMMIT_HASH',  defaultValue: 'HEAD', description: 'Git commit hash to build')
     }
 
@@ -13,57 +26,107 @@ pipeline {
 
         REGISTRY             = "192.168.56.10:5000"
         SONAR_URL            = "http://192.168.56.10:9000"
-        // FIX #1: use Gateway (30080) for security scan — avoids direct NodePort dependency
-        //         before services are deployed. The gateway routes /api/security/** → security-service.
         SECURITY_SERVICE_URL = "http://192.168.56.20:30080/api/security/scan"
         GATEWAY_URL          = "http://192.168.56.20:30080"
 
+        BRANCH_NAME_CLEAN = "${env.BRANCH_NAME ?: 'dev'}"
+
         K8S_INFRA      = "/var/lib/jenkins/workspace/PFE-2026/k8s/infra"
-        K8S_APPS       = "/var/lib/jenkins/workspace/PFE-2026/k8s/apps"
         K8S_MONITORING = "/var/lib/jenkins/workspace/PFE-2026/k8s/monitoring"
+        K8S_INGRESS    = "/var/lib/jenkins/workspace/PFE-2026/k8s/ingress"
+        K8S_NAMESPACES = "/var/lib/jenkins/workspace/PFE-2026/k8s/namespaces"
     }
 
     stages {
 
-        // ─────────────────────────────────────────
-        stage('Checkout') {
+        // ─────────────────────────────────────────────────────────
+        // STEP 1 — Resolve environment from Git branch
+        // ─────────────────────────────────────────────────────────
+        stage('Resolve Environment') {
             steps {
-                checkout scm
-            }
-        }
+                script {
+                    def branch = env.BRANCH_NAME_CLEAN?.trim() ?: 'dev'
 
-        // ─────────────────────────────────────────
-        stage('Build & Test') {
-            steps {
-                // FIX #2: use Java 21 for build (matches pom.xml java.version=17 is fine,
-                //         but Audit-Log-Service compiles with release 21 — needs JDK 21)
-                withEnv(["JAVA_HOME=${JAVA_HOME_21}", "PATH+JAVA=${JAVA_HOME_21}/bin"]) {
-                    sh '''
-                        java -version
-                        mvn clean verify -DskipTests=false
-                    '''
+                    if (branch == 'main' || branch == 'master') {
+                        env.DEPLOY_ENV  = 'prod'
+                        env.K8S_NS      = 'prod'
+                        env.IMAGE_TAG   = 'latest'
+                        env.K8S_OVERLAY = "${env.WORKSPACE}/k8s/overlays/prod"
+                        env.APP_HOST    = 'devsecops.local'
+                    } else if (branch == 'staging') {
+                        env.DEPLOY_ENV  = 'staging'
+                        env.K8S_NS      = 'staging'
+                        env.IMAGE_TAG   = 'staging'
+                        env.K8S_OVERLAY = "${env.WORKSPACE}/k8s/overlays/staging"
+                        env.APP_HOST    = 'staging.devsecops.local'
+                    } else {
+                        env.DEPLOY_ENV  = 'dev'
+                        env.K8S_NS      = 'dev'
+                        env.IMAGE_TAG   = 'dev'
+                        env.K8S_OVERLAY = "${env.WORKSPACE}/k8s/overlays/dev"
+                        env.APP_HOST    = 'dev.devsecops.local'
+                    }
+
+                    echo "╔══════════════════════════════════════╗"
+                    echo "║  Branch   : ${branch}"
+                    echo "║  Env      : ${env.DEPLOY_ENV}"
+                    echo "║  Namespace: ${env.K8S_NS}"
+                    echo "║  Image tag: ${env.IMAGE_TAG}"
+                    echo "║  Host     : ${env.APP_HOST}"
+                    echo "╚══════════════════════════════════════╝"
                 }
             }
         }
 
-        // ─────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────
+        // STEP 2 — Checkout
+        // ─────────────────────────────────────────────────────────
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // STEP 3 — Build & Unit Tests
+        // ─────────────────────────────────────────────────────────
+        stage('Build & Test') {
+            steps {
+                withEnv(["JAVA_HOME=${JAVA_HOME_21}", "PATH+JAVA=${JAVA_HOME_21}/bin"]) {
+                    sh '''
+                        java -version
+                        mvn clean verify -DskipTests=false \
+                          -Dspring.profiles.active=${DEPLOY_ENV}
+                    '''
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // STEP 4 — SonarQube Code Quality
+        // ─────────────────────────────────────────────────────────
         stage('SonarQube Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    // FIX #3: use sonar.token instead of deprecated sonar.login
                     withEnv(["JAVA_HOME=${JAVA_HOME_17}", "PATH+JAVA=${JAVA_HOME_17}/bin"]) {
                         sh '''
                             mvn sonar:sonar \
-                              -Dsonar.projectKey=PFE-2026 \
+                              -Dsonar.projectKey=PFE-2026-${DEPLOY_ENV} \
                               -Dsonar.host.url=${SONAR_URL} \
-                              -Dsonar.token=${SONAR_TOKEN}
+                              -Dsonar.token=${SONAR_TOKEN} \
+                              -Dsonar.branch.name=${BRANCH_NAME_CLEAN}
                         '''
                     }
                 }
             }
         }
 
-        // ─────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────
+        // STEP 5 — Trivy Vulnerability Scan
+        // ─────────────────────────────────────────────────────────
         stage('Trivy Scan') {
             steps {
                 sh '''
@@ -75,17 +138,16 @@ pipeline {
                       --skip-dirs "frontend/node_modules,frontend/.angular,frontend/dist" \
                       --skip-dirs "Auth-Service/target,Pipeline-Service/target,SECURITY-SERVICE/target" \
                       --skip-dirs "Eureka-Server/target,Gateway/target,Audit-Log-Service/target,Notification-Service/target" \
-                      --skip-dirs "target,.m2,repository" \
-                      --skip-files "pom.xml,*/pom.xml,package.json,*/package.json,package-lock.json,*/package-lock.json,yarn.lock,*/yarn.lock" \
                       --ignorefile ${WORKSPACE}/.trivyignore \
                       . 2>/dev/null || true
                     if [ ! -s ${WORKSPACE}/trivy.json ]; then echo '{"Results":[]}' > ${WORKSPACE}/trivy.json; fi
-                    echo "trivy.json: $(wc -c < ${WORKSPACE}/trivy.json) bytes"
                 '''
             }
         }
 
-        // ─────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────
+        // STEP 6 — Gitleaks Secret Scan
+        // ─────────────────────────────────────────────────────────
         stage('Gitleaks Scan') {
             steps {
                 sh '''
@@ -95,29 +157,20 @@ pipeline {
                       --report-format json \
                       --report-path ${WORKSPACE}/gitleaks.json 2>/dev/null || true
                     if [ ! -s ${WORKSPACE}/gitleaks.json ]; then echo '[]' > ${WORKSPACE}/gitleaks.json; fi
-                    echo "gitleaks.json: $(wc -c < ${WORKSPACE}/gitleaks.json) bytes"
                 '''
             }
         }
 
-        // ─────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────
+        // STEP 7 — Send Security Reports to Platform
+        // ─────────────────────────────────────────────────────────
         stage('Send Security Reports') {
             steps {
                 script {
-                    echo "Sending security reports to: ${SECURITY_SERVICE_URL}"
-                    echo "  executionId = ${EXECUTION_ID}"
-                    echo "  projectId   = ${PROJECT_ID}"
-
-                    // FIX #1 (MAIN FIX): remove -f flag from curl so a non-2xx response
-                    //   or temporary connection issue does NOT crash the pipeline.
-                    //   -f makes curl exit with code 7/22 on HTTP errors — that was killing
-                    //   Docker Build / Deploy stages entirely.
-                    //   We capture the HTTP status code separately and handle it ourselves.
                     def httpStatus = sh(script: """
                         curl -s -o ${WORKSPACE}/security-response.json \
                           -w "%{http_code}" \
-                          --connect-timeout 10 \
-                          --max-time 30 \
+                          --connect-timeout 10 --max-time 30 \
                           -X POST ${SECURITY_SERVICE_URL} \
                           -F "executionId=${EXECUTION_ID}" \
                           -F "projectId=${PROJECT_ID}" \
@@ -126,89 +179,48 @@ pipeline {
                         || echo "000"
                     """, returnStdout: true).trim()
 
-                    echo "Security Service HTTP Status: ${httpStatus}"
-
-                    // Read the response body if it exists
-                    def response = ""
-                    if (fileExists("${WORKSPACE}/security-response.json")) {
-                        response = readFile("${WORKSPACE}/security-response.json").trim()
-                        echo "Security Service Response: ${response}"
-                    }
+                    echo "Security service HTTP: ${httpStatus}"
+                    def response = fileExists("${WORKSPACE}/security-response.json") ?
+                        readFile("${WORKSPACE}/security-response.json").trim() : ""
 
                     if (httpStatus == "000") {
-                        // Service unreachable — warn but do NOT block the pipeline
-                        // (service may not be deployed yet on first run)
-                        echo "⚠️  WARNING: Security service unreachable (connection failed). Continuing pipeline."
-                        echo "   Run the pipeline again after deployment to get full security scanning."
-
-                        sh """
-                            curl -s -X POST ${GATEWAY_URL}/api/audit/log \
-                              -H 'Content-Type: application/json' \
-                              -d '{
-                                "action":        "SECURITY_SCAN_SKIPPED",
-                                "resource":      "PIPELINE",
-                                "resourceId":    ${EXECUTION_ID},
-                                "details":       "Security service unreachable during execution ${EXECUTION_ID} — scan skipped",
-                                "status":        "WARNING",
-                                "sourceService": "jenkins"
-                              }' || true
-                        """
-
+                        echo "⚠️  Security service unreachable — continuing without scan."
                     } else if (response.contains('"blocked":true')) {
                         sh """
-                            curl -s -X POST ${GATEWAY_URL}/api/audit/log \
-                              -H 'Content-Type: application/json' \
-                              -d '{
-                                "action":        "SECURITY_SCAN_BLOCKED",
-                                "resource":      "PIPELINE",
-                                "resourceId":    ${EXECUTION_ID},
-                                "details":       "Pipeline execution ${EXECUTION_ID} blocked — critical vulnerabilities detected",
-                                "status":        "FAILURE",
-                                "sourceService": "jenkins"
-                              }' || true
                             curl -s -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
                               -H 'Content-Type: application/json' \
                               -d '{"status":"BLOCKED"}' || true
                         """
-                        error("❌ PIPELINE BLOCKED — Security vulnerabilities detected. Fix them and retry.")
-
-                    } else {
-                        // Scan completed (2xx or non-blocking response)
-                        sh """
-                            curl -s -X POST ${GATEWAY_URL}/api/audit/log \
-                              -H 'Content-Type: application/json' \
-                              -d '{
-                                "action":        "SECURITY_SCAN_COMPLETED",
-                                "resource":      "PIPELINE",
-                                "resourceId":    ${EXECUTION_ID},
-                                "details":       "Security scan passed for execution ${EXECUTION_ID}",
-                                "status":        "SUCCESS",
-                                "sourceService": "jenkins"
-                              }' || true
-                        """
+                        error("❌ PIPELINE BLOCKED — Critical vulnerabilities detected.")
                     }
                 }
             }
         }
 
-        // ─────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────
+        // STEP 8 — Docker Build (all services + frontend)
+        // ─────────────────────────────────────────────────────────
         stage('Docker Build') {
             steps {
                 withEnv(["JAVA_HOME=${JAVA_HOME_21}", "PATH+JAVA=${JAVA_HOME_21}/bin"]) {
                     sh """
-                        docker build -t ${REGISTRY}/eureka-server:latest       ./Eureka-Server/
-                        docker build -t ${REGISTRY}/api-gateway:latest          ./Gateway/
-                        docker build -t ${REGISTRY}/auth-service:latest         ./Auth-Service/
-                        docker build -t ${REGISTRY}/pipeline-service:latest     ./Pipeline-Service/
-                        docker build -t ${REGISTRY}/security-service:latest     ./SECURITY-SERVICE/
-                        docker build -t ${REGISTRY}/notification-service:latest ./Notification-Service/
-                        docker build -t ${REGISTRY}/audit-log-service:latest    ./Audit-Log-Service/
+                        echo "=== Building :${IMAGE_TAG} images ==="
+                        docker build -t ${REGISTRY}/eureka-server:${IMAGE_TAG}       ./Eureka-Server/
+                        docker build -t ${REGISTRY}/api-gateway:${IMAGE_TAG}          ./Gateway/
+                        docker build -t ${REGISTRY}/auth-service:${IMAGE_TAG}         ./Auth-Service/
+                        docker build -t ${REGISTRY}/pipeline-service:${IMAGE_TAG}     ./Pipeline-Service/
+                        docker build -t ${REGISTRY}/security-service:${IMAGE_TAG}     ./SECURITY-SERVICE/
+                        docker build -t ${REGISTRY}/notification-service:${IMAGE_TAG} ./Notification-Service/
+                        docker build -t ${REGISTRY}/audit-log-service:${IMAGE_TAG}    ./Audit-Log-Service/
+                        docker build -t ${REGISTRY}/frontend:${IMAGE_TAG}             ./frontend/
                     """
                 }
             }
         }
 
-        // ─────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────
+        // STEP 9 — Docker Push to Nexus Registry
+        // ─────────────────────────────────────────────────────────
         stage('Docker Push') {
             steps {
                 withCredentials([usernamePassword(
@@ -217,70 +229,146 @@ pipeline {
                     passwordVariable: 'NEXUS_PASS'
                 )]) {
                     sh """
-                        echo "${NEXUS_PASS}" | docker login ${REGISTRY} \
-                          -u ${NEXUS_USER} --password-stdin
-
-                        docker push ${REGISTRY}/eureka-server:latest
-                        docker push ${REGISTRY}/api-gateway:latest
-                        docker push ${REGISTRY}/auth-service:latest
-                        docker push ${REGISTRY}/pipeline-service:latest
-                        docker push ${REGISTRY}/security-service:latest
-                        docker push ${REGISTRY}/notification-service:latest
-                        docker push ${REGISTRY}/audit-log-service:latest
+                        echo "${NEXUS_PASS}" | docker login ${REGISTRY} -u ${NEXUS_USER} --password-stdin
+                        docker push ${REGISTRY}/eureka-server:${IMAGE_TAG}
+                        docker push ${REGISTRY}/api-gateway:${IMAGE_TAG}
+                        docker push ${REGISTRY}/auth-service:${IMAGE_TAG}
+                        docker push ${REGISTRY}/pipeline-service:${IMAGE_TAG}
+                        docker push ${REGISTRY}/security-service:${IMAGE_TAG}
+                        docker push ${REGISTRY}/notification-service:${IMAGE_TAG}
+                        docker push ${REGISTRY}/audit-log-service:${IMAGE_TAG}
+                        docker push ${REGISTRY}/frontend:${IMAGE_TAG}
                     """
                 }
             }
         }
 
-        // ─────────────────────────────────────────
-        stage('Deploy to Kubernetes') {
+        // ─────────────────────────────────────────────────────────
+        // STEP 10 — Manual Approval Gate (PROD only)
+        // ─────────────────────────────────────────────────────────
+        stage('Approval Gate — PROD') {
+            when { expression { env.DEPLOY_ENV == 'prod' } }
+            steps {
+                timeout(time: 30, unit: 'MINUTES') {
+                    input message: "🚀 Deploy to PRODUCTION at devsecops.local ?",
+                          ok: "Yes — deploy to prod",
+                          submitter: "admin"
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // STEP 11 — Bootstrap: Namespaces + Secrets + Shared Infra
+        // ─────────────────────────────────────────────────────────
+        stage('Bootstrap K8s') {
             steps {
                 sh """
+                    # 1. Create namespaces (idempotent)
+                    kubectl apply -f ${K8S_NAMESPACES}/namespaces.yaml
+
+                    # 2. Copy shared secrets into target namespace
+                    for SECRET in db-secret jwt-secret; do
+                      kubectl get secret \$SECRET -n infra -o yaml \
+                        | sed "s/namespace: infra/namespace: ${K8S_NS}/" \
+                        | kubectl apply -f - || true
+                    done
+                    kubectl get secret mail-secret -n apps -o yaml \
+                      | sed "s/namespace: apps/namespace: ${K8S_NS}/" \
+                      | kubectl apply -f - || true
+
+                    # 3. Shared infra (MySQL, Eureka, Gateway)
                     kubectl apply -f ${K8S_INFRA}/mysql.yaml
                     kubectl apply -f ${K8S_INFRA}/eureka.yaml
                     kubectl apply -f ${K8S_INFRA}/gateway.yaml
 
-                    kubectl apply -f ${K8S_APPS}/auth.yaml
-                    kubectl apply -f ${K8S_APPS}/pipeline.yaml
-                    kubectl apply -f ${K8S_APPS}/security.yaml
-                    kubectl apply -f ${K8S_APPS}/notification.yaml
-                    kubectl apply -f ${K8S_APPS}/audit.yaml
-
+                    # 4. Monitoring
                     kubectl apply -f ${K8S_MONITORING}/prometheus.yaml
                     kubectl apply -f ${K8S_MONITORING}/grafana.yaml
 
-                    kubectl rollout restart deployment/eureka-server       -n infra
-                    kubectl rollout restart deployment/api-gateway          -n infra
-                    kubectl rollout restart deployment/auth-service         -n apps
-                    kubectl rollout restart deployment/pipeline-service     -n apps
-                    kubectl rollout restart deployment/security-service     -n apps
-                    kubectl rollout restart deployment/notification-service -n apps
-                    kubectl rollout restart deployment/audit-log-service    -n apps
-
-                    kubectl rollout status  deployment/api-gateway          -n infra --timeout=120s
-                    kubectl rollout status  deployment/pipeline-service     -n apps  --timeout=120s
-                    kubectl rollout status  deployment/security-service     -n apps  --timeout=120s
-                    kubectl rollout status  deployment/audit-log-service    -n apps  --timeout=120s
+                    # 5. Ingress controller rules
+                    kubectl apply -f ${K8S_INGRESS}/ingress-all.yaml
                 """
             }
         }
 
-        // ─────────────────────────────────────────
-        stage('Verify Deployment') {
+        // ─────────────────────────────────────────────────────────
+        // STEP 12 — Deploy Services to Target Namespace
+        // ─────────────────────────────────────────────────────────
+        stage('Deploy to K8s') {
+            steps {
+                sh """
+                    echo "=== Deploying to namespace: ${K8S_NS} (env: ${DEPLOY_ENV}) ==="
+
+                    # Apply services overlay for this environment
+                    kubectl apply -f ${K8S_OVERLAY}/apps-${DEPLOY_ENV}.yaml
+
+                    # Force new image pull
+                    for SVC in auth-service pipeline-service security-service notification-service audit-log-service; do
+                      kubectl rollout restart deployment/\$SVC -n ${K8S_NS} || true
+                    done
+
+                    # Restart frontend
+                    kubectl rollout restart deployment/frontend -n ${K8S_NS} || true
+
+                    # Restart shared infra only on prod deploy
+                    if [ "${DEPLOY_ENV}" = "prod" ]; then
+                      kubectl rollout restart deployment/eureka-server -n infra
+                      kubectl rollout restart deployment/api-gateway   -n infra
+                      kubectl rollout status  deployment/api-gateway   -n infra --timeout=120s
+                    fi
+                """
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // STEP 13 — Wait for Rollout
+        // ─────────────────────────────────────────────────────────
+        stage('Rollout Status') {
+            steps {
+                sh """
+                    echo "=== Waiting for rollout in ${K8S_NS} ==="
+                    kubectl rollout status deployment/auth-service         -n ${K8S_NS} --timeout=180s
+                    kubectl rollout status deployment/pipeline-service     -n ${K8S_NS} --timeout=180s
+                    kubectl rollout status deployment/security-service     -n ${K8S_NS} --timeout=180s
+                    kubectl rollout status deployment/audit-log-service    -n ${K8S_NS} --timeout=180s
+                    kubectl rollout status deployment/frontend             -n ${K8S_NS} --timeout=120s
+                """
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // STEP 14 — Smoke Test via Ingress
+        // ─────────────────────────────────────────────────────────
+        stage('Smoke Test') {
+            steps {
+                sh """
+                    sleep 15
+                    echo "=== Smoke test → http://${APP_HOST}/api/auth/actuator/health ==="
+
+                    STATUS=\$(curl -s -o /dev/null -w "%{http_code}" \
+                      --connect-timeout 10 --max-time 20 \
+                      -H "Host: ${APP_HOST}" \
+                      http://192.168.56.20/api/auth/actuator/health || echo "000")
+
+                    echo "Health endpoint: \$STATUS"
+                    kubectl get pods    -n ${K8S_NS}
+                    kubectl get ingress -n ${K8S_NS}
+                """
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // STEP 15 — Final Verification
+        // ─────────────────────────────────────────────────────────
+        stage('Verify') {
             steps {
                 sh '''
-                    echo "=== INFRA PODS ==="
+                    echo "=== Namespace: ${K8S_NS} ==="
+                    kubectl get all -n ${K8S_NS}
+                    echo "=== Infra ==="
                     kubectl get pods -n infra
-
-                    echo "=== APPS PODS ==="
-                    kubectl get pods -n apps
-
-                    echo "=== MONITORING PODS ==="
+                    echo "=== Monitoring ==="
                     kubectl get pods -n monitoring
-
-                    echo "=== SERVICES ==="
-                    kubectl get svc -n infra
-                    kubectl get svc -n apps
                 '''
             }
         }
@@ -291,44 +379,28 @@ pipeline {
             archiveArtifacts artifacts: '*.json', fingerprint: true
         }
         success {
-            echo "✅ PIPELINE SUCCESS — All services deployed!"
+            echo "✅ [${DEPLOY_ENV}] deployed to http://${APP_HOST}"
             script {
                 sh """
                     curl -s -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
                       -H 'Content-Type: application/json' \
                       -d '{"status":"SUCCESS"}' || true
-
                     curl -s -X POST ${GATEWAY_URL}/api/audit/log \
                       -H 'Content-Type: application/json' \
-                      -d '{
-                        "action":        "PIPELINE_TRIGGERED",
-                        "resource":      "PIPELINE",
-                        "resourceId":    ${EXECUTION_ID},
-                        "details":       "Pipeline execution ${EXECUTION_ID} deployed successfully",
-                        "status":        "SUCCESS",
-                        "sourceService": "jenkins"
-                      }' || true
+                      -d '{"action":"PIPELINE_TRIGGERED","resource":"PIPELINE","resourceId":${EXECUTION_ID},"details":"[${DEPLOY_ENV}] deployed to ${APP_HOST}","status":"SUCCESS","sourceService":"jenkins"}' || true
                 """
             }
         }
         failure {
-            echo "❌ PIPELINE FAILED"
+            echo "❌ [${DEPLOY_ENV}] pipeline FAILED"
             script {
                 sh """
                     curl -s -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
                       -H 'Content-Type: application/json' \
                       -d '{"status":"FAILED"}' || true
-
                     curl -s -X POST ${GATEWAY_URL}/api/audit/log \
                       -H 'Content-Type: application/json' \
-                      -d '{
-                        "action":        "PIPELINE_ABORTED",
-                        "resource":      "PIPELINE",
-                        "resourceId":    ${EXECUTION_ID},
-                        "details":       "Pipeline execution ${EXECUTION_ID} failed",
-                        "status":        "FAILURE",
-                        "sourceService": "jenkins"
-                      }' || true
+                      -d '{"action":"PIPELINE_ABORTED","resource":"PIPELINE","resourceId":${EXECUTION_ID},"details":"[${DEPLOY_ENV}] failed on ${BRANCH_NAME_CLEAN}","status":"FAILURE","sourceService":"jenkins"}' || true
                 """
             }
         }

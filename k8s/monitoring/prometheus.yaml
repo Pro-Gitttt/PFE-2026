@@ -15,7 +15,7 @@ data:
         kubernetes_sd_configs:
           - role: pod
             namespaces:
-              names: ['apps', 'infra']
+              names: ['apps', 'infra', 'dev', 'staging', 'prod']
         relabel_configs:
           # Only scrape pods that have the annotation set to "true"
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
@@ -32,12 +32,16 @@ data:
             regex: ([^:]+)(?::\d+)?;(\d+)
             replacement: $1:$2
             target_label: __address__
-          # Carry the app label through
+          # Carry app label — also export as 'application' (Spring Boot Micrometer default)
           - source_labels: [__meta_kubernetes_pod_label_app]
             target_label: app
-          # Also carry namespace
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: application
+          # Also carry namespace and env label
           - source_labels: [__meta_kubernetes_namespace]
             target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_label_env]
+            target_label: env
           # Pod name
           - source_labels: [__meta_kubernetes_pod_name]
             target_label: pod

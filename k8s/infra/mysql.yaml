@@ -17,11 +17,24 @@ metadata:
   namespace: infra
 data:
   init.sql: |
+    -- ── PROD databases (main branch) ──────────────────────────────
     CREATE DATABASE IF NOT EXISTS authdb         CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     CREATE DATABASE IF NOT EXISTS pipelinedb     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     CREATE DATABASE IF NOT EXISTS securitydb     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     CREATE DATABASE IF NOT EXISTS notificationdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     CREATE DATABASE IF NOT EXISTS auditlogdb     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    -- ── STAGING databases (staging branch) ────────────────────────
+    CREATE DATABASE IF NOT EXISTS authdb_staging         CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS pipelinedb_staging     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS securitydb_staging     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS notifdb_staging        CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS auditdb_staging        CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    -- ── DEV databases (dev branch) ────────────────────────────────
+    CREATE DATABASE IF NOT EXISTS authdb_dev             CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS pipelinedb_dev         CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS securitydb_dev         CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS notifdb_dev            CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS auditdb_dev            CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ---
 apiVersion: apps/v1
 kind: Deployment
