@@ -117,7 +117,7 @@ pipeline {
                               -Dsonar.projectKey=PFE-2026-${DEPLOY_ENV} \
                               -Dsonar.host.url=${SONAR_URL} \
                               -Dsonar.token=${SONAR_TOKEN} \
-                              -Dsonar.branch.name=${BRANCH_NAME_CLEAN}
+                              
                         '''
                     }
                 }
