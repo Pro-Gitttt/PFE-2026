@@ -348,7 +348,7 @@ pipeline {
                     STATUS=\$(curl -s -o /dev/null -w "%{http_code}" \
                       --connect-timeout 10 --max-time 20 \
                       -H "Host: ${APP_HOST}" \
-                      http://192.168.56.20/api/auth/actuator/health || echo "000")
+                      http://192.168.56.20:31038/api/auth/actuator/health || echo "000")
 
                     echo "Health endpoint: \$STATUS"
                     kubectl get pods    -n ${K8S_NS}
