@@ -242,6 +242,27 @@ pipeline {
                 }
             }
         }
+        // ─────────────────────────────────────────────────────────
+        // STEP GitOps — Update image tags in Git → ArgoCD syncs
+        // ─────────────────────────────────────────────────────────
+        stage('GitOps — Update Manifests') {
+            steps {
+                withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                    sh """
+                        cd ${WORKSPACE}
+                        git config user.email "tarek.gadhgadhi@esprit.tn"
+                        git config user.name "Pro-Gitttt"
+                        OVERLAY_FILE="k8s/overlays/${DEPLOY_ENV}/apps-${DEPLOY_ENV}.yaml"
+                        for SVC in auth-service pipeline-service security-service notification-service audit-log-service eureka-server api-gateway frontend; do
+                            sed -i "s|${REGISTRY}/\${SVC}:.*|${REGISTRY}/\${SVC}:${IMAGE_TAG}|g" \${OVERLAY_FILE}
+                        done
+                        git add \${OVERLAY_FILE}
+                        git diff --cached --quiet || git commit -m "ci: update ${DEPLOY_ENV} images to ${IMAGE_TAG} [skip ci]"
+                        git push https://Pro-Gitttt:\${GH_TOKEN}@github.com/Pro-Gitttt/PFE-2026.git HEAD:${BRANCH_NAME_CLEAN}
+                    """
+                }
+            }
+        }
 
         // ─────────────────────────────────────────────────────────
         // STEP 10 — Manual Approval Gate (PROD only)
