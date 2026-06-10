@@ -33,7 +33,6 @@ metadata:
   name: devsecops-dev
   namespace: dev
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
@@ -87,7 +86,6 @@ metadata:
   name: devsecops-staging
   namespace: staging
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
@@ -137,7 +135,6 @@ metadata:
   name: devsecops-prod
   namespace: prod
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
@@ -219,3 +216,15 @@ spec:
   type: ClusterIP
   selector: { app: frontend }
   ports: [{ port: 80, targetPort: 80 }]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-proxy
+  namespace: dev
+spec:
+  type: ExternalName
+  externalName: prometheus.monitoring.svc.cluster.local
+  ports:
+    - port: 9090

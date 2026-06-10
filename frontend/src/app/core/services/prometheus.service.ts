@@ -52,35 +52,22 @@ export class PrometheusService {
   snapshot(): Observable<MonitoringSnapshot> {
     return forkJoin({
       up:         this.query('up'),
-      rps:        this.query('sum by (application, app, job) (rate(http_server_requests_seconds_count[5m]))'),
-      errors:     this.query('sum by (application, app, job) (rate(http_server_requests_seconds_count{outcome="SERVER_ERROR"}[5m]))'),
-      jvmMem:     this.query('sum by (application, app, job) (jvm_memory_used_bytes{area="heap"}) / 1048576'),
-      jvmThreads: this.query('sum by (application, app, job) (jvm_threads_live_threads)'),
-      cpu:        this.query('sum by (application, app, job) (process_cpu_usage)'),
+      rps:        this.query('sum by (application) (rate(http_server_requests_seconds_count[5m]))'),
+      errors:     this.query('sum by (application) (rate(http_server_requests_seconds_count{outcome="SERVER_ERROR"}[5m]))'),
+      jvmMem:     this.query('sum by (application) (jvm_memory_used_bytes{area="heap"}) / 1048576'),
+      jvmThreads: this.query('sum by (application) (jvm_threads_live_threads)'),
+      cpu:        this.query('sum by (application) (process_cpu_usage)'),
       respTime:   this.query(
-        'sum by (application, app, job) (rate(http_server_requests_seconds_sum[5m])) / sum by (application, app, job) (rate(http_server_requests_seconds_count[5m])) * 1000'
+        'sum by (application) (rate(http_server_requests_seconds_sum[5m])) / sum by (application) (rate(http_server_requests_seconds_count[5m])) * 1000'
       ),
     }).pipe(
       map(({ up, rps, errors, jvmMem, jvmThreads, cpu, respTime }) => {
 
-        const knownApps = [
-          'auth-service', 'pipeline-service', 'security-service',
-          'notification-service', 'api-gateway',
-          'Auth Service', 'Pipeline Service', 'Security Service', 'API Gateway'
-        ];
-
         const getLabel = (r: PrometheusResult) =>
           r.metric['application'] ?? r.metric['app'] ?? r.metric['job'] ?? r.metric['instance'] ?? '';
 
-        const allUp = up.filter(r => {
-          const appLabel = getLabel(r);
-          return knownApps.some(k => appLabel.toLowerCase().includes(k.toLowerCase()));
-        });
-
-        const upResults = allUp.length > 0 ? allUp : up;
-
-        const services: ServiceHealth[] = upResults.map(r => ({
-          name: r.metric['application'] ?? r.metric['app'] ?? r.metric['job'] ?? r.metric['instance'] ?? 'unknown',
+        const services: ServiceHealth[] = up.map(r => ({
+          name: getLabel(r),
           up:   r.value[1] === '1',
         }));
 
