@@ -115,7 +115,7 @@ pipeline {
                         sh '''
                             echo "Waiting for SonarQube to be ready..."
                             for i in $(seq 1 24); do
-                                STATUS=$(curl -s "${SONAR_URL}/api/system/status" | grep -o "status....UP" | grep -c UP || true)
+                                STATUS=$(curl -s "http://192.168.56.10:9000/api/system/status" | grep -c '"UP"' || true)
                                 echo "  Attempt $i/24 — up=$STATUS"
                                 if [ "$STATUS" = "1" ]; then
                                     echo "SonarQube is UP"
