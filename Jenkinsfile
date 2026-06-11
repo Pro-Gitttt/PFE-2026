@@ -201,7 +201,7 @@ pipeline {
                         sh """
                             curl -s -X PUT ${GATEWAY_URL}/api/executions/${EXECUTION_ID}/status \
                               -H 'Content-Type: application/json' \
-                              -d '{"status":"BLOCKED"}' || true
+                              -d '{"status":"FAILED"}' || true
                         """
                         error("❌ PIPELINE BLOCKED — Critical vulnerabilities detected.")
                     }
