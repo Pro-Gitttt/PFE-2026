@@ -260,8 +260,12 @@ spec:
               value: "DEBUG"
             - name: JAVA_TOOL_OPTIONS
               value: "-Xms64m -Xmx256m"
+            - name: SPRING_MAIL_USERNAME
+              valueFrom: { secretKeyRef: { name: mail-secret, key: MAIL_USERNAME } }
+            - name: SPRING_MAIL_PASSWORD
+              valueFrom: { secretKeyRef: { name: mail-secret, key: MAIL_PASSWORD } }
             - name: MANAGEMENT_HEALTH_MAIL_ENABLED
-              value: "false"
+              value: "true"
           resources:
             requests: { memory: "384Mi", cpu: "100m" }
             limits:   { memory: "512Mi", cpu: "200m" }
