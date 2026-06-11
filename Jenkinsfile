@@ -325,46 +325,39 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────────────────
-        // STEP 12 — Deploy Services to Target Namespace
+        // STEP 12 — ArgoCD Sync (GitOps deployment)
         // ─────────────────────────────────────────────────────────
-        stage('Deploy to K8s') {
+        stage('ArgoCD Sync') {
             steps {
                 sh """
-                    echo "=== Deploying to namespace: ${K8S_NS} (env: ${DEPLOY_ENV}) ==="
-
-                    # Apply services overlay for this environment
-                    kubectl apply -f ${K8S_OVERLAY}/apps-${DEPLOY_ENV}.yaml
-
-                    # Force new image pull
-                    for SVC in auth-service pipeline-service security-service notification-service audit-log-service; do
-                      kubectl rollout restart deployment/\$SVC -n ${K8S_NS} || true
-                    done
-
-                    # Restart frontend
-                    kubectl rollout restart deployment/frontend -n ${K8S_NS} || true
-
-                    # Restart shared infra only on prod deploy
-                    if [ "${DEPLOY_ENV}" = "prod" ]; then
-                      kubectl rollout restart deployment/eureka-server -n infra
-                      kubectl rollout restart deployment/api-gateway   -n infra
-                      kubectl rollout status  deployment/api-gateway   -n infra --timeout=120s
-                    fi
+                    echo "=== Triggering ArgoCD sync for pfe-${DEPLOY_ENV} ==="
+                    kubectl patch application pfe-${DEPLOY_ENV} -n argocd \
+                      --type merge \
+                      -p '{"operation":{"sync":{"revision":"${DEPLOY_ENV}"}}}'
+                    echo "=== ArgoCD sync triggered — GitOps will handle rollout ==="
                 """
             }
         }
 
         // ─────────────────────────────────────────────────────────
-        // STEP 13 — Wait for Rollout
+        // STEP 13 — Wait for ArgoCD Health
         // ─────────────────────────────────────────────────────────
         stage('Rollout Status') {
             steps {
                 sh """
-                    echo "=== Waiting for rollout in ${K8S_NS} ==="
-                    kubectl rollout status deployment/auth-service         -n ${K8S_NS} --timeout=180s
-                    kubectl rollout status deployment/pipeline-service     -n ${K8S_NS} --timeout=180s
-                    kubectl rollout status deployment/security-service     -n ${K8S_NS} --timeout=180s
-                    kubectl rollout status deployment/audit-log-service    -n ${K8S_NS} --timeout=180s
-                    kubectl rollout status deployment/frontend             -n ${K8S_NS} --timeout=120s
+                    echo "=== Waiting for ArgoCD pfe-${DEPLOY_ENV} to become Healthy ==="
+                    for i in \$(seq 1 24); do
+                      STATUS=\$(kubectl get application pfe-${DEPLOY_ENV} -n argocd \
+                        -o jsonpath='{.status.health.status}')
+                      echo "Attempt \$i/24 — Health: \$STATUS"
+                      if [ "\$STATUS" = "Healthy" ]; then
+                        echo "=== ArgoCD reports Healthy ==="
+                        exit 0
+                      fi
+                      sleep 15
+                    done
+                    echo "=== Timeout waiting for ArgoCD health ==="
+                    exit 1
                 """
             }
         }
@@ -386,6 +379,7 @@ pipeline {
                     echo "Health endpoint: \$STATUS"
                     kubectl get pods    -n ${K8S_NS}
                     kubectl get ingress -n ${K8S_NS}
+                    kubectl get applications -n argocd
                 """
             }
         }
