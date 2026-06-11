@@ -55,6 +55,7 @@ spec:
             httpGet: { path: /actuator/health, port: 8081 }
             failureThreshold: 30
             periodSeconds: 10
+            initialDelaySeconds: 40
           readinessProbe:
             httpGet: { path: /actuator/health/readiness, port: 8081 }
             initialDelaySeconds: 90
@@ -130,6 +131,7 @@ spec:
             httpGet: { path: /actuator/health, port: 8082 }
             failureThreshold: 30
             periodSeconds: 10
+            initialDelaySeconds: 40
           readinessProbe:
             httpGet: { path: /actuator/health/readiness, port: 8082 }
             initialDelaySeconds: 90
@@ -197,6 +199,7 @@ spec:
             httpGet: { path: /actuator/health, port: 8083 }
             failureThreshold: 30
             periodSeconds: 10
+            initialDelaySeconds: 40
           readinessProbe:
             httpGet: { path: /actuator/health/readiness, port: 8083 }
             initialDelaySeconds: 90
@@ -266,6 +269,7 @@ spec:
             httpGet: { path: /actuator/health, port: 8087 }
             failureThreshold: 30
             periodSeconds: 10
+            initialDelaySeconds: 40
           readinessProbe:
             httpGet: { path: /actuator/health/readiness, port: 8087 }
             initialDelaySeconds: 90
@@ -335,6 +339,7 @@ spec:
             httpGet: { path: /actuator/health, port: 8085 }
             failureThreshold: 30
             periodSeconds: 10
+            initialDelaySeconds: 40
           readinessProbe:
             httpGet: { path: /actuator/health/readiness, port: 8085 }
             initialDelaySeconds: 90
