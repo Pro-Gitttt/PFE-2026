@@ -113,6 +113,18 @@ pipeline {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     withEnv(["JAVA_HOME=${JAVA_HOME_17}", "PATH+JAVA=${JAVA_HOME_17}/bin"]) {
                         sh '''
+                            echo "Waiting for SonarQube to be ready..."
+                            for i in $(seq 1 24); do
+                                STATUS=$(curl -s "${SONAR_URL}/api/system/status" | grep -o "status....UP" | grep -c UP || true)
+                                echo "  Attempt $i/24 — up=$STATUS"
+                                if [ "$STATUS" = "1" ]; then
+                                    echo "SonarQube is UP"
+                                    break
+                                fi
+                                sleep 10
+                            done
+                        '''
+                        sh '''
                             mvn sonar:sonar \
                               -Dsonar.projectKey=PFE-2026-${DEPLOY_ENV} \
                               -Dsonar.host.url=${SONAR_URL} \
