@@ -263,8 +263,8 @@ spec:
             - name: MANAGEMENT_HEALTH_MAIL_ENABLED
               value: "false"
           resources:
-            requests: { memory: "128Mi", cpu: "100m" }
-            limits:   { memory: "256Mi", cpu: "200m" }
+            requests: { memory: "384Mi", cpu: "100m" }
+            limits:   { memory: "512Mi", cpu: "200m" }
           startupProbe:
             httpGet: { path: /actuator/health, port: 8087 }
             failureThreshold: 30
@@ -333,8 +333,8 @@ spec:
             - name: MANAGEMENT_HEALTH_MAIL_ENABLED
               value: "false"
           resources:
-            requests: { memory: "128Mi", cpu: "100m" }
-            limits:   { memory: "256Mi", cpu: "200m" }
+            requests: { memory: "256Mi", cpu: "100m" }
+            limits:   { memory: "512Mi", cpu: "200m" }
           startupProbe:
             httpGet: { path: /actuator/health, port: 8085 }
             failureThreshold: 30
