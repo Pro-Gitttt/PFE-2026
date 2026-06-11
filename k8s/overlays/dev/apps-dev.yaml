@@ -50,7 +50,7 @@ spec:
               value: "health,info,prometheus"
           resources:
             requests: { memory: "128Mi", cpu: "100m" }
-            limits:   { memory: "256Mi", cpu: "200m" }
+            limits:   { memory: "512Mi", cpu: "200m" }
           startupProbe:
             httpGet: { path: /actuator/health, port: 8081 }
             failureThreshold: 30
@@ -126,7 +126,7 @@ spec:
               value: "health,info,prometheus"
           resources:
             requests: { memory: "128Mi", cpu: "100m" }
-            limits:   { memory: "256Mi", cpu: "200m" }
+            limits:   { memory: "512Mi", cpu: "200m" }
           startupProbe:
             httpGet: { path: /actuator/health, port: 8082 }
             failureThreshold: 30
@@ -194,7 +194,7 @@ spec:
               value: "-Xms64m -Xmx256m"
           resources:
             requests: { memory: "128Mi", cpu: "100m" }
-            limits:   { memory: "256Mi", cpu: "200m" }
+            limits:   { memory: "512Mi", cpu: "200m" }
           startupProbe:
             httpGet: { path: /actuator/health, port: 8083 }
             failureThreshold: 30
