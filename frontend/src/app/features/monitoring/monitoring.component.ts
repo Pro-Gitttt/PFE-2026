@@ -193,7 +193,7 @@ export class MonitoringComponent implements OnInit, OnDestroy {
   }
 
   readonly grafanaUrl    = 'http://192.168.56.20:32000';
-  readonly prometheusUrl = 'http://192.168.56.20:32090';
+  readonly prometheusUrl = '/prometheus';
 
   readonly knownServices = [
     'auth-service', 'pipeline-service', 'security-service',
