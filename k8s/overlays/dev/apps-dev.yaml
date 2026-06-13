@@ -131,7 +131,7 @@ spec:
             limits:   { memory: "512Mi", cpu: "200m" }
           startupProbe:
             httpGet: { path: /actuator/health, port: 8082 }
-            failureThreshold: 30
+            failureThreshold: 60
             periodSeconds: 10
             initialDelaySeconds: 40
           readinessProbe:
