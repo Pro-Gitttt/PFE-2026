@@ -118,6 +118,8 @@ spec:
               value: admin
             - name: JENKINS_TOKEN
               value: "1191735d78e67c11b3cbe11fba44d16f5f"
+            - name: NOTIFICATION_SERVICE_URL
+              value: "http://notification-service.dev.svc.cluster.local:8087/api/notifications/pipeline-event"
             - name: LOGGING_LEVEL_ROOT
               value: "DEBUG"
             - name: JAVA_TOOL_OPTIONS
