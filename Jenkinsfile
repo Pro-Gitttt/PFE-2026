@@ -114,7 +114,7 @@ pipeline {
                     withEnv(["JAVA_HOME=${JAVA_HOME_17}", "PATH+JAVA=${JAVA_HOME_17}/bin"]) {
                         sh '''
                             echo "Waiting for SonarQube to be ready..."
-                            for i in $(seq 1 24); do
+                            for i in $(seq 1 48); do
                                 STATUS=$(curl -s "http://192.168.56.10:9000/api/system/status" | grep -c '"UP"' || true)
                                 echo "  Attempt $i/24 — up=$STATUS"
                                 if [ "$STATUS" = "1" ]; then
@@ -346,7 +346,7 @@ pipeline {
             steps {
                 sh """
                     echo "=== Waiting for ArgoCD pfe-${DEPLOY_ENV} to become Healthy ==="
-                    for i in \$(seq 1 24); do
+                    for i in \$(seq 1 48); do
                       STATUS=\$(kubectl get application pfe-${DEPLOY_ENV} -n argocd \
                         -o jsonpath='{.status.health.status}')
                       echo "Attempt \$i/24 — Health: \$STATUS"
