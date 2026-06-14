@@ -79,6 +79,9 @@ public class ExecutionTrackingService {
     // ── Notification helper ────────────────────────────────────────
     private void sendNotification(PipelineExecution execution, Pipeline pipeline, PipelineStatus status) {
         try {
+            // Re-fetch with project eagerly loaded to avoid LazyInitializationException
+            pipeline = pipelineRepository.findByIdWithProject(pipeline.getId()).orElse(pipeline);
+
             String eventType = status == PipelineStatus.SUCCESS
                     ? "PIPELINE_SUCCESS" : "PIPELINE_FAILED";
 
